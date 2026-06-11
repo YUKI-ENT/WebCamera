@@ -22,14 +22,12 @@ GUI 管理画面付きで起動する場合:
 
 ## GUI で設定できる項目
 
-- `host`: 待ち受けアドレス。スマホからアクセスするなら通常は `0.0.0.0`
 - `port`: 待ち受けポート
 - `upload_dir`: アップロード画像の保存先
 - `max_upload_mb`: 最大アップロードサイズ
 - `allowed_extensions`: 許可する画像拡張子
-- `debug`: サーバー単体起動時のデバッグ設定
 
-`upload_dir` は相対パスならアプリ本体と同じフォルダ基準、絶対パスならその場所を使います。
+`upload_dir` は相対パスならアプリ本体と同じフォルダ基準、絶対パスならその場所を使います。`host` と `debug` は GUI には表示せず、`config.json` の値を保持します。
 
 ## config.json
 
@@ -37,8 +35,8 @@ GUI 管理画面付きで起動する場合:
 {
   "host": "0.0.0.0",
   "port": 5000,
-  "debug": true,
-  "upload_dir": "uploads",
+  "debug": false,
+  "upload_dir": "gazou",
   "max_upload_mb": 16,
   "allowed_extensions": ["jpg", "jpeg", "png", "webp", "gif"]
 }

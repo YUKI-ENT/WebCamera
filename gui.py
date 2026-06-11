@@ -76,27 +76,21 @@ class WebCameraGui(tk.Tk):
         settings.grid(row=0, column=0, sticky='ew')
         settings.columnconfigure(1, weight=1)
 
-        self.config_vars['host'] = tk.StringVar()
         self.config_vars['port'] = tk.StringVar()
         self.config_vars['upload_dir'] = tk.StringVar()
         self.config_vars['max_upload_mb'] = tk.StringVar()
         self.config_vars['allowed_extensions'] = tk.StringVar()
-        self.config_vars['debug'] = tk.BooleanVar()
 
-        self.add_row(settings, 0, 'Host', ttk.Entry(settings, textvariable=self.config_vars['host']))
-        self.add_row(settings, 1, 'Port', ttk.Entry(settings, textvariable=self.config_vars['port']))
+        self.add_row(settings, 0, 'Port', ttk.Entry(settings, textvariable=self.config_vars['port']))
 
         upload_row = ttk.Frame(settings)
         upload_row.columnconfigure(0, weight=1)
         ttk.Entry(upload_row, textvariable=self.config_vars['upload_dir']).grid(row=0, column=0, sticky='ew')
         ttk.Button(upload_row, text='Browse...', command=self.browse_upload_dir).grid(row=0, column=1, padx=(8, 0))
-        self.add_row(settings, 2, 'Upload directory', upload_row)
+        self.add_row(settings, 1, 'Upload directory', upload_row)
 
-        self.add_row(settings, 3, 'Max upload MB', ttk.Entry(settings, textvariable=self.config_vars['max_upload_mb']))
-        self.add_row(settings, 4, 'Extensions', ttk.Entry(settings, textvariable=self.config_vars['allowed_extensions']))
-        ttk.Checkbutton(settings, text='Debug mode', variable=self.config_vars['debug']).grid(
-            row=5, column=1, sticky='w', pady=(8, 0)
-        )
+        self.add_row(settings, 2, 'Max upload MB', ttk.Entry(settings, textvariable=self.config_vars['max_upload_mb']))
+        self.add_row(settings, 3, 'Extensions', ttk.Entry(settings, textvariable=self.config_vars['allowed_extensions']))
 
         controls = ttk.Frame(root)
         controls.grid(row=1, column=0, sticky='ew', pady=12)
@@ -124,12 +118,10 @@ class WebCameraGui(tk.Tk):
 
     def load_config_to_form(self) -> None:
         config = load_config()
-        self.config_vars['host'].set(str(config['host']))
         self.config_vars['port'].set(str(config['port']))
         self.config_vars['upload_dir'].set(str(config['upload_dir']))
         self.config_vars['max_upload_mb'].set(str(config['max_upload_mb']))
         self.config_vars['allowed_extensions'].set(', '.join(config['allowed_extensions']))
-        self.config_vars['debug'].set(bool(config['debug']))
         self.enqueue_log(f'Config loaded: {CONFIG_PATH}')
 
     def config_from_form(self) -> dict:
@@ -153,10 +145,11 @@ class WebCameraGui(tk.Tk):
         if not upload_dir:
             raise ValueError('Upload directory must not be empty.')
 
+        current_config = load_config()
         return {
-            'host': self.config_vars['host'].get().strip() or '0.0.0.0',
+            'host': current_config.get('host', '0.0.0.0'),
             'port': port,
-            'debug': bool(self.config_vars['debug'].get()),
+            'debug': current_config.get('debug', False),
             'upload_dir': upload_dir,
             'max_upload_mb': max_upload_mb,
             'allowed_extensions': extensions,

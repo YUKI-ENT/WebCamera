@@ -19,7 +19,7 @@ DEFAULT_CONFIG = {
     'host': '0.0.0.0',
     'port': 5000,
     'debug': True,
-    'upload_dir': 'uploads',
+    'upload_dir': 'gazou',
     'max_upload_mb': 16,
     'allowed_extensions': ['jpg', 'jpeg', 'png', 'webp', 'gif'],
 }
