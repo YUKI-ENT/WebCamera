@@ -1,4 +1,5 @@
 # WebCamera
+<img width="320" height="540" alt="Screenshot_20260611-152627~2" src="https://github.com/user-attachments/assets/dcadec46-50f4-4f9b-9ed3-62fd4108eff6" />
 
 スマホなどのブラウザからカメラで撮影し、Python サーバーへ画像をアップロードする Flask アプリです。
 
