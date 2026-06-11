@@ -26,8 +26,28 @@ GUI 管理画面付きで起動する場合:
 - `upload_dir`: アップロード画像の保存先
 - `max_upload_mb`: 最大アップロードサイズ
 - `allowed_extensions`: 許可する画像拡張子
+- `thept_path`: RSBase の `thept.txt` の場所
+- `exam_names`: クライアント画面に表示する検査名リスト。カンマ区切り
 
 `upload_dir` は相対パスならアプリ本体と同じフォルダ基準、絶対パスならその場所を使います。`host` と `debug` は GUI には表示せず、`config.json` の値を保持します。
+
+## RSBase 連携
+
+`thept.txt` は通常 `C:\common\thept.txt` を指定します。内容が `0,34503,"氏名"` のような形式の場合、2列目をID、3列目を患者名として読み取ります。
+
+クライアント画面では `RSBase ID連動` がオンなら `thept.txt` のIDを使い、オフなら手動ID入力欄の値を使います。
+
+保存ファイル名は以下の形式です。
+
+```text
+ID~連番~yyyy_mm_dd~検査名~RSB.jpg
+```
+
+例:
+
+```text
+34503~0001~2026_06_11~カメラ~RSB.jpg
+```
 
 ## config.json
 
@@ -38,7 +58,9 @@ GUI 管理画面付きで起動する場合:
   "debug": false,
   "upload_dir": "gazou",
   "max_upload_mb": 16,
-  "allowed_extensions": ["jpg", "jpeg", "png", "webp", "gif"]
+  "allowed_extensions": ["jpg", "jpeg", "png", "webp", "gif"],
+  "thept_path": "C:\\common\\thept.txt",
+  "exam_names": ["カメラ"]
 }
 ```
 

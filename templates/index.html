@@ -15,6 +15,33 @@
         </div>
 
         <form id="uploadForm" class="upload-form">
+          <div class="patient-panel">
+            <label class="toggle-row">
+              <input id="useRsbase" type="checkbox" checked>
+              <span>RSBase ID連動</span>
+            </label>
+            <dl class="patient-info">
+              <div>
+                <dt>ID</dt>
+                <dd id="linkedPatientId">未取得</dd>
+              </div>
+              <div>
+                <dt>患者名</dt>
+                <dd id="linkedPatientName">未取得</dd>
+              </div>
+            </dl>
+          </div>
+
+          <label class="field" id="manualIdField" hidden>
+            <span>手動ID</span>
+            <input id="manualId" type="text" inputmode="numeric" autocomplete="off" placeholder="例: 34503">
+          </label>
+
+          <label class="field">
+            <span>検査名</span>
+            <select id="examName" required></select>
+          </label>
+
           <label class="picker">
             <span>写真を撮る / 選択する</span>
             <input id="imageInput" name="image" type="file" accept="image/*" capture="environment" required>

@@ -80,6 +80,8 @@ class WebCameraGui(tk.Tk):
         self.config_vars['upload_dir'] = tk.StringVar()
         self.config_vars['max_upload_mb'] = tk.StringVar()
         self.config_vars['allowed_extensions'] = tk.StringVar()
+        self.config_vars['thept_path'] = tk.StringVar()
+        self.config_vars['exam_names'] = tk.StringVar()
 
         self.add_row(settings, 0, 'Port', ttk.Entry(settings, textvariable=self.config_vars['port']))
 
@@ -91,6 +93,14 @@ class WebCameraGui(tk.Tk):
 
         self.add_row(settings, 2, 'Max upload MB', ttk.Entry(settings, textvariable=self.config_vars['max_upload_mb']))
         self.add_row(settings, 3, 'Extensions', ttk.Entry(settings, textvariable=self.config_vars['allowed_extensions']))
+
+        thept_row = ttk.Frame(settings)
+        thept_row.columnconfigure(0, weight=1)
+        ttk.Entry(thept_row, textvariable=self.config_vars['thept_path']).grid(row=0, column=0, sticky='ew')
+        ttk.Button(thept_row, text='Browse...', command=self.browse_thept_path).grid(row=0, column=1, padx=(8, 0))
+        self.add_row(settings, 4, 'thept.txt path', thept_row)
+
+        self.add_row(settings, 5, 'Exam names', ttk.Entry(settings, textvariable=self.config_vars['exam_names']))
 
         controls = ttk.Frame(root)
         controls.grid(row=1, column=0, sticky='ew', pady=12)
@@ -122,6 +132,8 @@ class WebCameraGui(tk.Tk):
         self.config_vars['upload_dir'].set(str(config['upload_dir']))
         self.config_vars['max_upload_mb'].set(str(config['max_upload_mb']))
         self.config_vars['allowed_extensions'].set(', '.join(config['allowed_extensions']))
+        self.config_vars['thept_path'].set(str(config.get('thept_path', r'C:\\common\\thept.txt')))
+        self.config_vars['exam_names'].set(', '.join(config.get('exam_names', ['カメラ'])))
         self.enqueue_log(f'Config loaded: {CONFIG_PATH}')
 
     def config_from_form(self) -> dict:
@@ -145,6 +157,18 @@ class WebCameraGui(tk.Tk):
         if not upload_dir:
             raise ValueError('Upload directory must not be empty.')
 
+        thept_path = self.config_vars['thept_path'].get().strip()
+        if not thept_path:
+            raise ValueError('thept.txt path must not be empty.')
+
+        exam_names = [
+            exam.strip()
+            for exam in self.config_vars['exam_names'].get().split(',')
+            if exam.strip()
+        ]
+        if not exam_names:
+            raise ValueError('Exam names must not be empty.')
+
         current_config = load_config()
         return {
             'host': current_config.get('host', '0.0.0.0'),
@@ -153,6 +177,8 @@ class WebCameraGui(tk.Tk):
             'upload_dir': upload_dir,
             'max_upload_mb': max_upload_mb,
             'allowed_extensions': extensions,
+            'thept_path': thept_path,
+            'exam_names': exam_names,
         }
 
     def browse_upload_dir(self) -> None:
@@ -161,6 +187,16 @@ class WebCameraGui(tk.Tk):
         selected = filedialog.askdirectory(initialdir=initial_dir)
         if selected:
             self.config_vars['upload_dir'].set(selected)
+
+    def browse_thept_path(self) -> None:
+        current = self.config_vars['thept_path'].get().strip()
+        initial_dir = str(Path(current).parent) if current else str(Path.cwd())
+        selected = filedialog.askopenfilename(
+            initialdir=initial_dir,
+            filetypes=[('Text files', '*.txt'), ('All files', '*.*')],
+        )
+        if selected:
+            self.config_vars['thept_path'].set(selected)
 
     def save_settings(self) -> dict | None:
         try:

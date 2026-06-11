@@ -22,7 +22,7 @@ body {
 }
 
 .panel {
-  width: min(100%, 460px);
+  width: min(100%, 520px);
   padding: 24px;
   border: 1px solid #d9e0e8;
   border-radius: 8px;
@@ -108,4 +108,69 @@ button:disabled {
   margin-top: 8px;
   color: #176b87;
   font-weight: 700;
+}
+
+
+.patient-panel {
+  display: grid;
+  gap: 12px;
+  padding: 14px;
+  border: 1px solid #d9e0e8;
+  border-radius: 8px;
+  background: #f8fafc;
+}
+
+.toggle-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  color: #263449;
+  font-weight: 700;
+}
+
+.patient-info {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+  margin: 0;
+}
+
+.patient-info div {
+  min-width: 0;
+}
+
+.patient-info dt,
+.field span {
+  margin-bottom: 4px;
+  color: #596579;
+  font-size: 13px;
+  font-weight: 700;
+}
+
+.patient-info dd {
+  margin: 0;
+  overflow-wrap: anywhere;
+  color: #18212f;
+  font-weight: 800;
+}
+
+.muted {
+  color: #8a96a8;
+}
+
+.field {
+  display: grid;
+  gap: 6px;
+}
+
+.field input,
+.field select {
+  width: 100%;
+  min-height: 44px;
+  border: 1px solid #cbd5e1;
+  border-radius: 8px;
+  padding: 8px 10px;
+  background: #ffffff;
+  color: #18212f;
+  font: inherit;
 }
