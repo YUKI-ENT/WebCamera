@@ -7,6 +7,13 @@ Windows exe では GUI 管理画面を表示し、設定変更、ログ確認、
 
 ## 開発実行
 - Windows exe版はGUI 管理画面付きで、実行するとすぐにサーバーとして機能します。
+
+  このような画面が起動しますので、設定を適宜変更後、Stop→Startで再起動して、表示されるQRコードのアドレスにスマートフォン等からアクセスしてください。
+
+  アドレスは、`http://192.168.100.10:5000` 等になります。
+
+  <img width="762" height="592" alt="Screenshot 2026-06-11 153801" src="https://github.com/user-attachments/assets/24eac27d-87ce-4ddc-900e-665dcf83bd14" />
+
 - Python環境がある場合はスクリプト実行が可能です。
 
 サーバーだけを起動する場合:
@@ -80,4 +87,7 @@ pyinstaller webcamera.spec
 ## ファイヤーウォール設定
 
 Windowsで実行するときはTCP 5000が外部からアクセスできるようにファイヤーウォールの設定を行ってください。
+
+<img width="435" height="555" alt="Screenshot 2026-06-11 153830" src="https://github.com/user-attachments/assets/0e1cd412-b1c3-4233-b731-e62dbe570760" />
+
 
