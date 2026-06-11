@@ -10,6 +10,7 @@ const manualIdField = document.querySelector("#manualIdField");
 const linkedPatientId = document.querySelector("#linkedPatientId");
 const linkedPatientName = document.querySelector("#linkedPatientName");
 const examName = document.querySelector("#examName");
+const modeBadge = document.querySelector("#modeBadge");
 
 let currentPatient = { id: "", name: "", available: false };
 
@@ -18,6 +19,11 @@ function updateManualMode() {
   manualIdField.hidden = linked;
   manualId.disabled = linked;
   manualId.required = !linked;
+  modeBadge.textContent = linked ? "ID連動" : "手動ID";
+  modeBadge.classList.toggle("manual", !linked);
+  if (linked) {
+    manualId.value = "";
+  }
 }
 
 async function loadSettings() {

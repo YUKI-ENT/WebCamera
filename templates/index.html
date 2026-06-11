@@ -10,16 +10,23 @@
     <main class="app">
       <section class="panel">
         <div class="heading">
-          <h1>Camera Upload</h1>
-          <p>スマホで撮影した写真をサーバーへ送信します。</p>
+          <div>
+            <p class="eyebrow">RSBase Camera</p>
+            <h1>画像アップロード</h1>
+          </div>
+          <span id="modeBadge" class="mode-badge">ID連動</span>
         </div>
 
         <form id="uploadForm" class="upload-form">
-          <div class="patient-panel">
-            <label class="toggle-row">
-              <input id="useRsbase" type="checkbox" checked>
-              <span>RSBase ID連動</span>
-            </label>
+          <section class="patient-panel" aria-label="患者情報">
+            <div class="patient-topline">
+              <label class="switch-row">
+                <input id="useRsbase" type="checkbox" checked>
+                <span class="switch" aria-hidden="true"></span>
+                <span>RSBase ID連動</span>
+              </label>
+            </div>
+
             <dl class="patient-info">
               <div>
                 <dt>ID</dt>
@@ -30,12 +37,15 @@
                 <dd id="linkedPatientName">未取得</dd>
               </div>
             </dl>
-          </div>
+          </section>
 
-          <label class="field" id="manualIdField" hidden>
-            <span>手動ID</span>
-            <input id="manualId" type="text" inputmode="numeric" autocomplete="off" placeholder="例: 34503">
-          </label>
+          <section class="manual-panel" id="manualIdField" hidden>
+            <label class="field">
+              <span>手動ID</span>
+              <input id="manualId" type="text" inputmode="numeric" autocomplete="off" placeholder="例: 34503">
+            </label>
+            <p class="hint">RSBase ID連動がOFFです。保存ファイル名に使うIDを手入力してください。</p>
+          </section>
 
           <label class="field">
             <span>検査名</span>
@@ -43,7 +53,8 @@
           </label>
 
           <label class="picker">
-            <span>写真を撮る / 選択する</span>
+            <span class="picker-title">写真を撮る / 選択する</span>
+            <span class="picker-subtitle">撮影後、プレビューを確認してアップロードします。</span>
             <input id="imageInput" name="image" type="file" accept="image/*" capture="environment" required>
           </label>
 
