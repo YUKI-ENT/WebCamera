@@ -1,4 +1,5 @@
 import queue
+import socket
 import threading
 import tkinter as tk
 from datetime import datetime
@@ -10,12 +11,29 @@ from werkzeug.serving import make_server
 from app import CONFIG_PATH, create_app, load_config, save_config
 
 
+def get_lan_ip() -> str:
+    try:
+        with socket.socket(socket.AF_INET, socket.SOCK_DGRAM) as sock:
+            sock.connect(('8.8.8.8', 80))
+            return sock.getsockname()[0]
+    except OSError:
+        try:
+            return socket.gethostbyname(socket.gethostname())
+        except OSError:
+            return '127.0.0.1'
+
+
+def display_host(host: str) -> str:
+    return get_lan_ip() if host in {'0.0.0.0', '::', ''} else host
+
+
 class ServerController:
     def __init__(self, log_callback):
         self.log_callback = log_callback
         self.server = None
         self.thread = None
         self.config = None
+        self.public_url = ''
 
     def is_running(self) -> bool:
         return self.thread is not None and self.thread.is_alive()
@@ -33,7 +51,8 @@ class ServerController:
         self.server = make_server(host, port, app, threaded=True)
         self.thread = threading.Thread(target=self.server.serve_forever, daemon=True)
         self.thread.start()
-        self.log_callback(f'Server started: http://{host}:{port}')
+        self.public_url = f'http://{display_host(host)}:{port}'
+        self.log_callback(f'Server started: {self.public_url}')
         self.log_callback(f'Upload directory: {upload_dir}')
 
     def stop(self) -> None:
@@ -46,6 +65,7 @@ class ServerController:
         self.server.server_close()
         self.server = None
         self.thread = None
+        self.public_url = ''
         self.log_callback('Server stopped.')
 
 
@@ -59,6 +79,7 @@ class WebCameraGui(tk.Tk):
         self.log_queue = queue.Queue()
         self.server = ServerController(self.enqueue_log)
         self.config_vars = {}
+        self.qr_photo = None
 
         self.create_widgets()
         self.load_config_to_form()
@@ -70,7 +91,7 @@ class WebCameraGui(tk.Tk):
         root = ttk.Frame(self, padding=16)
         root.pack(fill='both', expand=True)
         root.columnconfigure(0, weight=1)
-        root.rowconfigure(2, weight=1)
+        root.rowconfigure(3, weight=1)
 
         settings = ttk.LabelFrame(root, text='Settings', padding=12)
         settings.grid(row=0, column=0, sticky='ew')
@@ -113,8 +134,16 @@ class WebCameraGui(tk.Tk):
         self.status_var = tk.StringVar(value='Stopped')
         ttk.Label(controls, textvariable=self.status_var, anchor='e').grid(row=0, column=3, sticky='e')
 
+        address_frame = ttk.LabelFrame(root, text='Server Address', padding=8)
+        address_frame.grid(row=2, column=0, sticky='ew', pady=(0, 12))
+        address_frame.columnconfigure(0, weight=1)
+        self.server_url_var = tk.StringVar(value='Server is stopped.')
+        ttk.Label(address_frame, textvariable=self.server_url_var).grid(row=0, column=0, sticky='ew')
+        self.qr_label = ttk.Label(address_frame, text='QR code will appear after startup.', anchor='center')
+        self.qr_label.grid(row=1, column=0, sticky='ew', pady=(8, 0))
+
         log_frame = ttk.LabelFrame(root, text='Log', padding=8)
-        log_frame.grid(row=2, column=0, sticky='nsew')
+        log_frame.grid(row=3, column=0, sticky='nsew')
         log_frame.columnconfigure(0, weight=1)
         log_frame.rowconfigure(0, weight=1)
 
@@ -232,6 +261,7 @@ class WebCameraGui(tk.Tk):
             return
 
         self.status_var.set('Running')
+        self.update_server_address()
 
     def auto_start_server(self) -> None:
         self.enqueue_log('Auto starting server...')
@@ -240,6 +270,28 @@ class WebCameraGui(tk.Tk):
     def stop_server(self) -> None:
         self.server.stop()
         self.status_var.set('Stopped')
+        self.server_url_var.set('Server is stopped.')
+        self.qr_photo = None
+        self.qr_label.configure(image='', text='QR code will appear after startup.')
+
+    def update_server_address(self) -> None:
+        url = self.server.public_url
+        if not url:
+            self.server_url_var.set('Server is stopped.')
+            return
+
+        self.server_url_var.set(url)
+        try:
+            import qrcode
+            from PIL import ImageTk
+
+            image = qrcode.make(url).resize((180, 180))
+            self.qr_photo = ImageTk.PhotoImage(image)
+            self.qr_label.configure(image=self.qr_photo, text='')
+        except Exception as error:
+            self.qr_photo = None
+            self.qr_label.configure(image='', text=f'QR unavailable: {error}')
+            self.enqueue_log(f'QR unavailable: {error}')
 
     def enqueue_log(self, message: str) -> None:
         timestamp = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
