@@ -6,6 +6,8 @@
 Windows exe では GUI 管理画面を表示し、設定変更、ログ確認、サーバーの起動と停止ができます。GUI 起動時にはサーバーも自動起動し、スマホアクセス用URLとQRコードを表示します。
 
 ## 開発実行
+- Windows exe版はGUI 管理画面付きで、実行するとすぐにサーバーとして機能します。
+- Python環境がある場合はスクリプト実行が可能です。
 
 サーバーだけを起動する場合:
 
@@ -35,25 +37,20 @@ GUI 管理画面付きで起動する場合:
 
 ## RSBase 連携
 
-`thept.txt` は通常 `C:\common\thept.txt` を指定します。内容が `0,34503,"氏名"` のような形式の場合、2列目をID、3列目を患者名として読み取ります。
-
 本ツールを起動するPCにRSBaseがある場合は、基本情報の`(52)  c:\common\thept.txt (&& c:\ID_temp.txt)にIDを出力` をyes としていただくと、RSBaseに連動してIDが設定されます。
+
+`thept.txt` は通常 `C:\common\thept.txt` を指定します。これによりRSBaseの患者遷移に連動して、本ツールのID,患者名も変わります。
 
 クライアント画面では `RSBase ID連動` がオンなら `thept.txt` のIDを使い、オフなら手動ID入力欄の値を使います。`thept.txt` が読めない場合や手動IDが空欄の場合は、設定された仮IDを使って保存します。
 
-保存ファイル名は以下の形式です。
+保存作のgazouフォルダを、RSAutoの監視フォルダを指定したり、RSBaseで読み込みボタン（QRcodeの部分）クリックで自動ファイリングされます。
 
-```text
-ID~連番~yyyy_mm_dd~検査名~RSB.jpg
-```
-
-例:
-
-```text
-34503~0001~2026_06_11~カメラ~RSB.jpg
-```
 
 ## config.json
+
+WebCamera.exeと同じフォルダの設定ファイル：config.jsonを読み込みますが、初回起動時や存在しない場合は自動で生成されます。
+
+適宜設定を書き換えてください。
 
 ```json
 {
@@ -71,7 +68,7 @@ ID~連番~yyyy_mm_dd~検査名~RSB.jpg
 
 ## Windows exe 作成
 
-Windows 環境で PyInstaller を入れてから実行します。
+Windows 環境で PyInstaller を入れてから実行することで、Windows exeを作ることもできます。
 
 ```powershell
 pip install -r requirements-dev.txt
