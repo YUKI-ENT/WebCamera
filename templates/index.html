@@ -1,0 +1,35 @@
+<!doctype html>
+<html lang="ja">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Web Camera Upload</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='styles.css') }}">
+  </head>
+  <body>
+    <main class="app">
+      <section class="panel">
+        <div class="heading">
+          <h1>Camera Upload</h1>
+          <p>スマホで撮影した写真をサーバーへ送信します。</p>
+        </div>
+
+        <form id="uploadForm" class="upload-form">
+          <label class="picker">
+            <span>写真を撮る / 選択する</span>
+            <input id="imageInput" name="image" type="file" accept="image/*" capture="environment" required>
+          </label>
+
+          <img id="preview" class="preview" alt="選択した画像のプレビュー" hidden>
+
+          <button id="sendButton" type="submit" disabled>アップロード</button>
+        </form>
+
+        <p id="status" class="status" role="status" aria-live="polite"></p>
+        <a id="uploadedLink" class="uploaded-link" hidden>アップロード画像を開く</a>
+      </section>
+    </main>
+
+    <script src="{{ url_for('static', filename='app.js') }}"></script>
+  </body>
+</html>
