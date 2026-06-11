@@ -79,3 +79,8 @@ pyinstaller webcamera.spec
 ```
 
 生成された `dist\WebCamera.exe` を起動すると GUI が開き、exe と同じフォルダに `config.json` が無ければ自動作成します。
+
+## ファイヤーウォール設定
+
+Windowsで実行するときはTCP 5000が外部からアクセスできるようにファイヤーウォールの設定を行ってください。
+
