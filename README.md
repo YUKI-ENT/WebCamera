@@ -28,6 +28,7 @@ GUI 管理画面付きで起動する場合:
 - `allowed_extensions`: 許可する画像拡張子
 - `thept_path`: RSBase の `thept.txt` の場所
 - `exam_names`: クライアント画面に表示する検査名リスト。カンマ区切り
+- `provisional_id`: ID未取得時に使う仮ID
 
 `upload_dir` は相対パスならアプリ本体と同じフォルダ基準、絶対パスならその場所を使います。`host` と `debug` は GUI には表示せず、`config.json` の値を保持します。
 
@@ -35,7 +36,7 @@ GUI 管理画面付きで起動する場合:
 
 `thept.txt` は通常 `C:\common\thept.txt` を指定します。内容が `0,34503,"氏名"` のような形式の場合、2列目をID、3列目を患者名として読み取ります。
 
-クライアント画面では `RSBase ID連動` がオンなら `thept.txt` のIDを使い、オフなら手動ID入力欄の値を使います。
+クライアント画面では `RSBase ID連動` がオンなら `thept.txt` のIDを使い、オフなら手動ID入力欄の値を使います。`thept.txt` が読めない場合や手動IDが空欄の場合は、設定された仮IDを使って保存します。
 
 保存ファイル名は以下の形式です。
 
@@ -60,7 +61,8 @@ ID~連番~yyyy_mm_dd~検査名~RSB.jpg
   "max_upload_mb": 16,
   "allowed_extensions": ["jpg", "jpeg", "png", "webp", "gif"],
   "thept_path": "C:\\common\\thept.txt",
-  "exam_names": ["カメラ"]
+  "exam_names": ["カメラ"],
+  "provisional_id": "999999"
 }
 ```
 

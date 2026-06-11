@@ -6,5 +6,6 @@
   "max_upload_mb": 16,
   "allowed_extensions": ["jpg", "jpeg", "png", "webp", "gif"],
   "thept_path": "C:\\common\\thept.txt",
-  "exam_names": ["カメラ","スマホ"]
+  "exam_names": ["カメラ","スマホ"],
+  "provisional_id": "999999"
 }

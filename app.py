@@ -27,6 +27,7 @@ DEFAULT_CONFIG = {
     'allowed_extensions': ['jpg', 'jpeg', 'png', 'webp', 'gif'],
     'thept_path': r'C:\common\thept.txt',
     'exam_names': ['カメラ'],
+    'provisional_id': '999999',
 }
 
 
@@ -64,6 +65,7 @@ def save_config(config: dict) -> None:
     clean_config['max_upload_mb'] = int(clean_config['max_upload_mb'])
     clean_config['upload_dir'] = str(clean_config['upload_dir'])
     clean_config['thept_path'] = str(clean_config['thept_path'])
+    clean_config['provisional_id'] = str(clean_config['provisional_id']).strip() or DEFAULT_CONFIG['provisional_id']
     clean_config['allowed_extensions'] = [
         extension.lower().lstrip('.') for extension in clean_list(clean_config['allowed_extensions'])
     ]
@@ -85,6 +87,7 @@ def normalize_config(config: dict | None = None) -> dict:
     }
     normalized['exam_names'] = clean_list(normalized['exam_names']) or DEFAULT_CONFIG['exam_names']
     normalized['thept_path'] = str(normalized['thept_path'])
+    normalized['provisional_id'] = str(normalized['provisional_id']).strip() or DEFAULT_CONFIG['provisional_id']
 
     upload_dir = Path(normalized['upload_dir'])
     normalized['upload_dir'] = upload_dir if upload_dir.is_absolute() else APP_DIR / upload_dir
@@ -189,7 +192,10 @@ def create_app(config: dict | None = None, on_event=None) -> Flask:
 
     @app.get('/settings')
     def settings():
-        return jsonify({'exam_names': server_config['exam_names']})
+        return jsonify({
+            'exam_names': server_config['exam_names'],
+            'provisional_id': server_config['provisional_id'],
+        })
 
     @app.get('/patient')
     def patient():
@@ -211,15 +217,18 @@ def create_app(config: dict | None = None, on_event=None) -> Flask:
         if exam_name not in server_config['exam_names']:
             return jsonify({'error': '未登録の検査名です。'}), 400
 
+        used_provisional = False
         if use_rsbase:
             patient_info = parse_thept(server_config['thept_path'])
             patient_id = patient_info['id'] if patient_info['available'] else ''
             if not patient_id:
-                return jsonify({'error': patient_info['error'] or 'RSBase ID を取得できません。'}), 400
+                patient_id = server_config['provisional_id']
+                used_provisional = True
         else:
             patient_id = request.form.get('manual_id', '').strip()
             if not patient_id:
-                return jsonify({'error': '手動IDを入力してください。'}), 400
+                patient_id = server_config['provisional_id']
+                used_provisional = True
 
         filename = create_rsbase_filename(upload_dir, patient_id, exam_name, extension)
         save_path = upload_dir / filename
@@ -231,6 +240,8 @@ def create_app(config: dict | None = None, on_event=None) -> Flask:
                 'message': 'アップロードしました。',
                 'filename': filename,
                 'url': f'/uploads/{filename}',
+                'used_provisional_id': used_provisional,
+                'patient_id': patient_id,
             }
         )
 

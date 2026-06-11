@@ -82,6 +82,7 @@ class WebCameraGui(tk.Tk):
         self.config_vars['allowed_extensions'] = tk.StringVar()
         self.config_vars['thept_path'] = tk.StringVar()
         self.config_vars['exam_names'] = tk.StringVar()
+        self.config_vars['provisional_id'] = tk.StringVar()
 
         self.add_row(settings, 0, 'Port', ttk.Entry(settings, textvariable=self.config_vars['port']))
 
@@ -101,6 +102,7 @@ class WebCameraGui(tk.Tk):
         self.add_row(settings, 4, 'thept.txt path', thept_row)
 
         self.add_row(settings, 5, 'Exam names', ttk.Entry(settings, textvariable=self.config_vars['exam_names']))
+        self.add_row(settings, 6, 'Provisional ID', ttk.Entry(settings, textvariable=self.config_vars['provisional_id']))
 
         controls = ttk.Frame(root)
         controls.grid(row=1, column=0, sticky='ew', pady=12)
@@ -134,6 +136,7 @@ class WebCameraGui(tk.Tk):
         self.config_vars['allowed_extensions'].set(', '.join(config['allowed_extensions']))
         self.config_vars['thept_path'].set(str(config.get('thept_path', r'C:\\common\\thept.txt')))
         self.config_vars['exam_names'].set(', '.join(config.get('exam_names', ['カメラ'])))
+        self.config_vars['provisional_id'].set(str(config.get('provisional_id', '999999')))
         self.enqueue_log(f'Config loaded: {CONFIG_PATH}')
 
     def config_from_form(self) -> dict:
@@ -169,6 +172,10 @@ class WebCameraGui(tk.Tk):
         if not exam_names:
             raise ValueError('Exam names must not be empty.')
 
+        provisional_id = self.config_vars['provisional_id'].get().strip()
+        if not provisional_id:
+            raise ValueError('Provisional ID must not be empty.')
+
         current_config = load_config()
         return {
             'host': current_config.get('host', '0.0.0.0'),
@@ -179,6 +186,7 @@ class WebCameraGui(tk.Tk):
             'allowed_extensions': extensions,
             'thept_path': thept_path,
             'exam_names': exam_names,
+            'provisional_id': provisional_id,
         }
 
     def browse_upload_dir(self) -> None:

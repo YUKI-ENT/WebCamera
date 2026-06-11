@@ -11,16 +11,21 @@ const linkedPatientId = document.querySelector("#linkedPatientId");
 const linkedPatientName = document.querySelector("#linkedPatientName");
 const examName = document.querySelector("#examName");
 const modeBadge = document.querySelector("#modeBadge");
+const manualHint = document.querySelector("#manualHint");
 
 let currentPatient = { id: "", name: "", available: false };
+let provisionalId = "999999";
 
 function updateManualMode() {
   const linked = useRsbase.checked;
   manualIdField.hidden = linked;
   manualId.disabled = linked;
-  manualId.required = !linked;
+  manualId.required = false;
   modeBadge.textContent = linked ? "ID連動" : "手動ID";
   modeBadge.classList.toggle("manual", !linked);
+  if (manualHint) {
+    manualHint.textContent = `RSBase ID連動がOFFです。空欄のまま保存すると仮ID ${provisionalId} を使用します。`;
+  }
   if (linked) {
     manualId.value = "";
   }
@@ -31,6 +36,8 @@ async function loadSettings() {
     const response = await fetch("/settings");
     const settings = await response.json();
     const names = settings.exam_names && settings.exam_names.length ? settings.exam_names : ["カメラ"];
+    provisionalId = settings.provisional_id || "999999";
+    updateManualMode();
     examName.replaceChildren(
       ...names.map((name) => {
         const option = document.createElement("option");
@@ -55,7 +62,7 @@ async function refreshPatient() {
     currentPatient = { id: "", name: "", available: false, error: "通信できません。" };
   }
 
-  linkedPatientId.textContent = currentPatient.id || "未取得";
+  linkedPatientId.textContent = currentPatient.id || `未取得 / 仮ID ${provisionalId}`;
   linkedPatientName.textContent = currentPatient.name || "未取得";
   linkedPatientId.classList.toggle("muted", !currentPatient.id);
   linkedPatientName.classList.toggle("muted", !currentPatient.name);
@@ -90,16 +97,6 @@ form.addEventListener("submit", async (event) => {
     return;
   }
 
-  if (useRsbase.checked && !currentPatient.id) {
-    statusText.textContent = currentPatient.error || "RSBase IDを取得できません。";
-    return;
-  }
-
-  if (!useRsbase.checked && !manualId.value.trim()) {
-    statusText.textContent = "手動IDを入力してください。";
-    return;
-  }
-
   const formData = new FormData();
   formData.append("image", file);
   formData.append("use_rsbase", useRsbase.checked ? "true" : "false");
@@ -121,7 +118,8 @@ form.addEventListener("submit", async (event) => {
       throw new Error(result.error || "アップロードに失敗しました。");
     }
 
-    statusText.textContent = `${result.message} ${result.filename}`;
+    const prefix = result.used_provisional_id ? `仮ID ${result.patient_id} で保存しました。` : result.message;
+    statusText.textContent = `${prefix} ${result.filename}`;
     uploadedLink.href = result.url;
     uploadedLink.hidden = false;
   } catch (error) {
