@@ -231,15 +231,9 @@ def create_app(config: dict | None = None, on_event=None) -> Flask:
 
     @app.post('/upload')
     def upload():
-        image = request.files.get('image')
-        if image is None or image.filename == '':
-            return jsonify({'error': '画像ファイルが選択されていません。'}), 400
-
-        original_name = secure_filename(image.filename)
-        extension = extension_from_upload(image, original_name, allowed_extensions)
-        if extension not in allowed_extensions:
-            detail = f"拡張子: {extension or 'なし'}, MIME: {image.mimetype or '不明'}"
-            return jsonify({'error': f'対応していないファイル形式です。{detail}'}), 400
+        images = [file for file in request.files.getlist('image') if file and file.filename]
+        if not images:
+            return jsonify({'error': 'ファイルが選択されていません。'}), 400
 
         use_rsbase = request.form.get('use_rsbase', 'true').lower() == 'true'
         exam_name = request.form.get('exam_name', '').strip() or server_config['exam_names'][0]
@@ -259,16 +253,27 @@ def create_app(config: dict | None = None, on_event=None) -> Flask:
                 patient_id = server_config['provisional_id']
                 used_provisional = True
 
-        filename = create_rsbase_filename(upload_dir, patient_id, exam_name, extension)
-        save_path = upload_dir / filename
-        image.save(save_path)
-        emit(f'Uploaded: {filename}')
+        saved_files = []
+        for image in images:
+            original_name = secure_filename(image.filename)
+            extension = extension_from_upload(image, original_name, allowed_extensions)
+            if extension not in allowed_extensions:
+                detail = f"拡張子: {extension or 'なし'}, MIME: {image.mimetype or '不明'}"
+                return jsonify({'error': f'{original_name or "ファイル"} は対応していないファイル形式です。{detail}'}), 400
+
+            filename = create_rsbase_filename(upload_dir, patient_id, exam_name, extension)
+            save_path = upload_dir / filename
+            image.save(save_path)
+            emit(f'Uploaded: {filename}')
+            saved_files.append({'filename': filename, 'url': f'/uploads/{filename}'})
 
         return jsonify(
             {
                 'message': 'アップロードしました。',
-                'filename': filename,
-                'url': f'/uploads/{filename}',
+                'filename': saved_files[0]['filename'],
+                'url': saved_files[0]['url'],
+                'files': saved_files,
+                'count': len(saved_files),
                 'used_provisional_id': used_provisional,
                 'patient_id': patient_id,
             }

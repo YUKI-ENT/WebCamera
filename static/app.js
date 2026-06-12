@@ -2,6 +2,7 @@ const form = document.querySelector("#uploadForm");
 const photoInput = document.querySelector("#photoInput");
 const galleryInput = document.querySelector("#galleryInput");
 const videoInput = document.querySelector("#videoInput");
+const previewGrid = document.querySelector("#previewGrid");
 const imagePreview = document.querySelector("#imagePreview");
 const videoPreview = document.querySelector("#videoPreview");
 const sendButton = document.querySelector("#sendButton");
@@ -18,8 +19,8 @@ const manualHint = document.querySelector("#manualHint");
 
 let currentPatient = { id: "", name: "", available: false };
 let provisionalId = "999999";
-let selectedFile = null;
-let selectedObjectUrl = "";
+let selectedFiles = [];
+let selectedObjectUrls = [];
 
 function updateManualMode() {
   const linked = useRsbase.checked;
@@ -73,11 +74,15 @@ async function refreshPatient() {
   linkedPatientName.classList.toggle("muted", !currentPatient.name);
 }
 
+function revokeObjectUrls() {
+  selectedObjectUrls.forEach((url) => URL.revokeObjectURL(url));
+  selectedObjectUrls = [];
+}
+
 function clearPreviews() {
-  if (selectedObjectUrl) {
-    URL.revokeObjectURL(selectedObjectUrl);
-    selectedObjectUrl = "";
-  }
+  revokeObjectUrls();
+  previewGrid.hidden = true;
+  previewGrid.replaceChildren();
   imagePreview.hidden = true;
   imagePreview.removeAttribute("src");
   videoPreview.hidden = true;
@@ -94,32 +99,64 @@ function resetOtherInputs(activeInput) {
   });
 }
 
+function renderSinglePreview(file) {
+  const url = URL.createObjectURL(file);
+  selectedObjectUrls.push(url);
+
+  if (file.type.startsWith("video/")) {
+    videoPreview.src = url;
+    videoPreview.hidden = false;
+  } else {
+    imagePreview.src = url;
+    imagePreview.hidden = false;
+  }
+}
+
+function renderGalleryPreview(files) {
+  previewGrid.hidden = false;
+  previewGrid.replaceChildren(
+    ...files.slice(0, 12).map((file) => {
+      const url = URL.createObjectURL(file);
+      selectedObjectUrls.push(url);
+      const item = document.createElement("div");
+      item.className = "preview-item";
+
+      const img = document.createElement("img");
+      img.src = url;
+      img.alt = file.name;
+      item.appendChild(img);
+
+      const label = document.createElement("span");
+      label.textContent = file.name;
+      item.appendChild(label);
+      return item;
+    }),
+  );
+}
+
 function handleFileSelection(input, kindLabel) {
-  const file = input.files[0];
+  const files = Array.from(input.files || []);
   uploadedLink.hidden = true;
   clearPreviews();
   resetOtherInputs(input);
 
-  if (!file) {
-    selectedFile = null;
+  if (!files.length) {
+    selectedFiles = [];
     sendButton.disabled = true;
     statusText.textContent = "";
     return;
   }
 
-  selectedFile = file;
-  selectedObjectUrl = URL.createObjectURL(file);
-
-  if (file.type.startsWith("video/")) {
-    videoPreview.src = selectedObjectUrl;
-    videoPreview.hidden = false;
+  selectedFiles = files;
+  if (input === galleryInput && files.length > 1) {
+    renderGalleryPreview(files);
   } else {
-    imagePreview.src = selectedObjectUrl;
-    imagePreview.hidden = false;
+    renderSinglePreview(files[0]);
   }
 
   sendButton.disabled = false;
-  statusText.textContent = `${kindLabel}: ${file.name} を選択しました。`;
+  const suffix = files.length === 1 ? files[0].name : `${files.length}件`;
+  statusText.textContent = `${kindLabel}: ${suffix} を選択しました。`;
 }
 
 photoInput.addEventListener("change", () => handleFileSelection(photoInput, "写真"));
@@ -130,13 +167,13 @@ useRsbase.addEventListener("change", updateManualMode);
 form.addEventListener("submit", async (event) => {
   event.preventDefault();
 
-  if (!selectedFile) {
+  if (!selectedFiles.length) {
     statusText.textContent = "アップロードするファイルを選択してください。";
     return;
   }
 
   const formData = new FormData();
-  formData.append("image", selectedFile);
+  selectedFiles.forEach((file) => formData.append("image", file));
   formData.append("use_rsbase", useRsbase.checked ? "true" : "false");
   formData.append("manual_id", manualId.value.trim());
   formData.append("exam_name", examName.value);
@@ -156,9 +193,11 @@ form.addEventListener("submit", async (event) => {
       throw new Error(result.error || "アップロードに失敗しました。");
     }
 
+    const count = result.count || 1;
     const prefix = result.used_provisional_id ? `仮ID ${result.patient_id} で保存しました。` : result.message;
-    statusText.textContent = `${prefix} ${result.filename}`;
-    uploadedLink.href = result.url;
+    const firstFile = result.files && result.files.length ? result.files[0] : result;
+    statusText.textContent = count === 1 ? `${prefix} ${firstFile.filename}` : `${prefix} ${count}件保存しました。`;
+    uploadedLink.href = firstFile.url;
     uploadedLink.hidden = false;
   } catch (error) {
     statusText.textContent = error.message;

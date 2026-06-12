@@ -60,8 +60,8 @@
             </label>
             <label class="media-action">
               <span class="media-action-title">ギャラリー</span>
-              <span class="media-action-subtitle">画像を選択</span>
-              <input id="galleryInput" type="file" accept="image/*">
+              <span class="media-action-subtitle">画像を複数選択</span>
+              <input id="galleryInput" type="file" accept="image/*" multiple>
             </label>
             <label class="media-action">
               <span class="media-action-title">動画</span>
@@ -70,6 +70,7 @@
             </label>
           </section>
 
+          <div id="previewGrid" class="preview-grid" hidden></div>
           <img id="imagePreview" class="preview" alt="選択した画像のプレビュー" hidden>
           <video id="videoPreview" class="preview" controls playsinline hidden></video>
 
