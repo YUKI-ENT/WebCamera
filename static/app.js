@@ -164,6 +164,21 @@ galleryInput.addEventListener("change", () => handleFileSelection(galleryInput, 
 videoInput.addEventListener("change", () => handleFileSelection(videoInput, "動画"));
 useRsbase.addEventListener("change", updateManualMode);
 
+async function parseUploadResponse(response) {
+  const contentType = response.headers.get("content-type") || "";
+  if (contentType.includes("application/json")) {
+    return response.json();
+  }
+
+  const text = await response.text();
+  if (response.status === 413) {
+    throw new Error("ファイルサイズが大きすぎます。サーバーGUIの Max upload MB を増やして再起動してください。");
+  }
+
+  const plainText = text.replace(/<[^>]*>/g, " ").replace(/\s+/g, " ").trim();
+  throw new Error(plainText || `アップロードに失敗しました。HTTP ${response.status}`);
+}
+
 form.addEventListener("submit", async (event) => {
   event.preventDefault();
 
@@ -187,7 +202,7 @@ form.addEventListener("submit", async (event) => {
       method: "POST",
       body: formData,
     });
-    const result = await response.json();
+    const result = await parseUploadResponse(response);
 
     if (!response.ok) {
       throw new Error(result.error || "アップロードに失敗しました。");

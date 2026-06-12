@@ -8,6 +8,7 @@ from datetime import datetime
 from pathlib import Path
 
 from flask import Flask, jsonify, render_template, request, send_from_directory
+from werkzeug.exceptions import HTTPException, RequestEntityTooLarge
 from werkzeug.utils import secure_filename
 
 
@@ -213,6 +214,20 @@ def create_app(config: dict | None = None, on_event=None) -> Flask:
     def emit(message: str) -> None:
         if on_event is not None:
             on_event(message)
+
+    @app.errorhandler(RequestEntityTooLarge)
+    def request_entity_too_large(error):
+        max_mb = server_config['max_upload_mb']
+        return jsonify({'error': f'ファイルサイズが大きすぎます。最大 {max_mb}MB までです。'}), 413
+
+    @app.errorhandler(HTTPException)
+    def http_exception(error):
+        return jsonify({'error': error.description or error.name}), error.code
+
+    @app.errorhandler(Exception)
+    def unexpected_error(error):
+        emit(f'Error: {error}')
+        return jsonify({'error': 'サーバー内部エラーが発生しました。'}), 500
 
     @app.get('/')
     def index():
