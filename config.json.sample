@@ -3,9 +3,22 @@
   "port": 5000,
   "debug": false,
   "upload_dir": "C:\\gazou",
-  "max_upload_mb": 16,
-  "allowed_extensions": ["jpg", "jpeg", "png", "webp", "gif"],
+  "max_upload_mb": 200,
+  "allowed_extensions": [
+    "jpg",
+    "jpeg",
+    "png",
+    "webp",
+    "gif",
+    "mp4",
+    "mov",
+    "m4v",
+    "webm"
+  ],
   "thept_path": "C:\\common\\thept.txt",
-  "exam_names": ["カメラ","スマホ"],
+  "exam_names": [
+    "カメラ",
+    "スマホ"
+  ],
   "provisional_id": "999999"
 }

@@ -1,9 +1,9 @@
 # WebCamera
 <img width="320" height="540" alt="Screenshot_20260611-152627~2" src="https://github.com/user-attachments/assets/dcadec46-50f4-4f9b-9ed3-62fd4108eff6" />
 
-スマホなどのブラウザからカメラで撮影し、Python サーバーへ画像をアップロードする Flask アプリです。
+スマホなどのブラウザからカメラで撮影し、Python サーバーへ画像や動画をアップロードする Flask アプリです。
 
-Windows exe では GUI 管理画面を表示し、設定変更、ログ確認、サーバーの起動と停止ができます。GUI 起動時にはサーバーも自動起動し、スマホアクセス用URLとQRコードを表示します。
+Windows exe では GUI 管理画面を表示し、設定変更、ログ確認、サーバーの起動と停止ができます。GUI 起動時にはサーバーも自動起動し、スマホアクセス用URLとQRコードを表示します。クライアント画面では写真撮影、ギャラリー画像選択、動画撮影/選択ができます。
 
 ## 開発実行
 - Windows exe版はGUI 管理画面付きで、実行するとすぐにサーバーとして機能します。
@@ -65,8 +65,8 @@ WebCamera.exeと同じフォルダの設定ファイル：config.jsonを読み�
   "port": 5000,
   "debug": false,
   "upload_dir": "gazou",
-  "max_upload_mb": 16,
-  "allowed_extensions": ["jpg", "jpeg", "png", "webp", "gif"],
+  "max_upload_mb": 200,
+  "allowed_extensions": ["jpg", "jpeg", "png", "webp", "gif", "mp4", "mov", "m4v", "webm"],
   "thept_path": "C:\\common\\thept.txt",
   "exam_names": ["カメラ"],
   "provisional_id": "999999"

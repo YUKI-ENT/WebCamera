@@ -52,19 +52,32 @@
             <select id="examName" required></select>
           </label>
 
-          <label class="picker">
-            <span class="picker-title">写真を撮る / 選択する</span>
-            <span class="picker-subtitle">撮影後、プレビューを確認してアップロードします。</span>
-            <input id="imageInput" name="image" type="file" accept="image/*" capture="environment" required>
-          </label>
+          <section class="media-actions" aria-label="撮影またはファイル選択">
+            <label class="media-action">
+              <span class="media-action-title">写真を撮る</span>
+              <span class="media-action-subtitle">カメラ起動</span>
+              <input id="photoInput" type="file" accept="image/*" capture="environment">
+            </label>
+            <label class="media-action">
+              <span class="media-action-title">ギャラリー</span>
+              <span class="media-action-subtitle">画像を選択</span>
+              <input id="galleryInput" type="file" accept="image/*">
+            </label>
+            <label class="media-action">
+              <span class="media-action-title">動画</span>
+              <span class="media-action-subtitle">撮影 / 選択</span>
+              <input id="videoInput" type="file" accept="video/*" capture="environment">
+            </label>
+          </section>
 
-          <img id="preview" class="preview" alt="選択した画像のプレビュー" hidden>
+          <img id="imagePreview" class="preview" alt="選択した画像のプレビュー" hidden>
+          <video id="videoPreview" class="preview" controls playsinline hidden></video>
 
           <button id="sendButton" type="submit" disabled>アップロード</button>
         </form>
 
         <p id="status" class="status" role="status" aria-live="polite"></p>
-        <a id="uploadedLink" class="uploaded-link" hidden>アップロード画像を開く</a>
+        <a id="uploadedLink" class="uploaded-link" hidden>アップロードファイルを開く</a>
       </section>
     </main>
 

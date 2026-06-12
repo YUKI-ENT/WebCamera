@@ -218,12 +218,19 @@ p {
   font-weight: 700;
 }
 
-.picker {
+.media-actions {
   display: grid;
-  min-height: 118px;
-  place-items: center;
-  padding: 20px;
-  border: 2px dashed #8aa0b7;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.media-action {
+  display: grid;
+  min-height: 92px;
+  align-content: center;
+  gap: 5px;
+  padding: 14px 10px;
+  border: 2px solid #d5dee9;
   border-radius: 8px;
   background: #f8fafc;
   color: #263449;
@@ -231,19 +238,23 @@ p {
   text-align: center;
 }
 
-.picker-title {
-  font-size: 17px;
+.media-action:active {
+  border-color: #176b87;
+  background: #edf7fa;
+}
+
+.media-action-title {
+  font-size: 16px;
   font-weight: 900;
 }
 
-.picker-subtitle {
-  margin-top: 4px;
+.media-action-subtitle {
   color: #64748b;
-  font-size: 13px;
-  font-weight: 700;
+  font-size: 12px;
+  font-weight: 800;
 }
 
-.picker input {
+.media-action input {
   position: absolute;
   inline-size: 1px;
   block-size: 1px;
@@ -309,7 +320,8 @@ button:disabled {
     align-self: flex-start;
   }
 
-  .patient-info {
+  .patient-info,
+  .media-actions {
     grid-template-columns: 1fr;
   }
 }

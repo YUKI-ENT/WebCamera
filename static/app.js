@@ -1,6 +1,9 @@
 const form = document.querySelector("#uploadForm");
-const imageInput = document.querySelector("#imageInput");
-const preview = document.querySelector("#preview");
+const photoInput = document.querySelector("#photoInput");
+const galleryInput = document.querySelector("#galleryInput");
+const videoInput = document.querySelector("#videoInput");
+const imagePreview = document.querySelector("#imagePreview");
+const videoPreview = document.querySelector("#videoPreview");
 const sendButton = document.querySelector("#sendButton");
 const statusText = document.querySelector("#status");
 const uploadedLink = document.querySelector("#uploadedLink");
@@ -15,6 +18,8 @@ const manualHint = document.querySelector("#manualHint");
 
 let currentPatient = { id: "", name: "", available: false };
 let provisionalId = "999999";
+let selectedFile = null;
+let selectedObjectUrl = "";
 
 function updateManualMode() {
   const linked = useRsbase.checked;
@@ -68,37 +73,70 @@ async function refreshPatient() {
   linkedPatientName.classList.toggle("muted", !currentPatient.name);
 }
 
-imageInput.addEventListener("change", () => {
-  const file = imageInput.files[0];
+function clearPreviews() {
+  if (selectedObjectUrl) {
+    URL.revokeObjectURL(selectedObjectUrl);
+    selectedObjectUrl = "";
+  }
+  imagePreview.hidden = true;
+  imagePreview.removeAttribute("src");
+  videoPreview.hidden = true;
+  videoPreview.pause();
+  videoPreview.removeAttribute("src");
+  videoPreview.load();
+}
+
+function resetOtherInputs(activeInput) {
+  [photoInput, galleryInput, videoInput].forEach((input) => {
+    if (input !== activeInput) {
+      input.value = "";
+    }
+  });
+}
+
+function handleFileSelection(input, kindLabel) {
+  const file = input.files[0];
   uploadedLink.hidden = true;
+  clearPreviews();
+  resetOtherInputs(input);
 
   if (!file) {
-    preview.hidden = true;
-    preview.removeAttribute("src");
+    selectedFile = null;
     sendButton.disabled = true;
     statusText.textContent = "";
     return;
   }
 
-  preview.src = URL.createObjectURL(file);
-  preview.hidden = false;
-  sendButton.disabled = false;
-  statusText.textContent = `${file.name} を選択しました。`;
-});
+  selectedFile = file;
+  selectedObjectUrl = URL.createObjectURL(file);
 
+  if (file.type.startsWith("video/")) {
+    videoPreview.src = selectedObjectUrl;
+    videoPreview.hidden = false;
+  } else {
+    imagePreview.src = selectedObjectUrl;
+    imagePreview.hidden = false;
+  }
+
+  sendButton.disabled = false;
+  statusText.textContent = `${kindLabel}: ${file.name} を選択しました。`;
+}
+
+photoInput.addEventListener("change", () => handleFileSelection(photoInput, "写真"));
+galleryInput.addEventListener("change", () => handleFileSelection(galleryInput, "ギャラリー"));
+videoInput.addEventListener("change", () => handleFileSelection(videoInput, "動画"));
 useRsbase.addEventListener("change", updateManualMode);
 
 form.addEventListener("submit", async (event) => {
   event.preventDefault();
 
-  const file = imageInput.files[0];
-  if (!file) {
-    statusText.textContent = "画像を選択してください。";
+  if (!selectedFile) {
+    statusText.textContent = "アップロードするファイルを選択してください。";
     return;
   }
 
   const formData = new FormData();
-  formData.append("image", file);
+  formData.append("image", selectedFile);
   formData.append("use_rsbase", useRsbase.checked ? "true" : "false");
   formData.append("manual_id", manualId.value.trim());
   formData.append("exam_name", examName.value);
