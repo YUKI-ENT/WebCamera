@@ -13,7 +13,12 @@
     "mp4",
     "mov",
     "m4v",
-    "webm"
+    "webm",
+    "3gp",
+    "3gpp",
+    "3g2",
+    "h264",
+    "hevc"
   ],
   "thept_path": "C:\\common\\thept.txt",
   "exam_names": [

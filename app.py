@@ -24,10 +24,25 @@ DEFAULT_CONFIG = {
     'debug': False,
     'upload_dir': 'gazou',
     'max_upload_mb': 200,
-    'allowed_extensions': ['jpg', 'jpeg', 'png', 'webp', 'gif', 'mp4', 'mov', 'm4v', 'webm'],
+    'allowed_extensions': ['jpg', 'jpeg', 'png', 'webp', 'gif', 'mp4', 'mov', 'm4v', 'webm', '3gp', '3gpp', '3g2', 'h264', 'hevc'],
     'thept_path': r'C:\common\thept.txt',
     'exam_names': ['カメラ'],
     'provisional_id': '999999',
+}
+
+
+MIME_EXTENSION_MAP = {
+    'image/jpeg': 'jpg',
+    'image/png': 'png',
+    'image/webp': 'webp',
+    'image/gif': 'gif',
+    'video/mp4': 'mp4',
+    'video/quicktime': 'mov',
+    'video/webm': 'webm',
+    'video/3gpp': '3gp',
+    'video/3gpp2': '3g2',
+    'video/h264': 'h264',
+    'video/hevc': 'hevc',
 }
 
 
@@ -135,6 +150,19 @@ def normalize_output_extension(extension: str) -> str:
     return 'jpg' if extension == 'jpeg' else extension
 
 
+def extension_from_upload(file_storage, original_name: str, allowed_extensions: set[str]) -> str:
+    extension = original_name.rsplit('.', 1)[-1].lower() if '.' in original_name else ''
+    if extension in allowed_extensions:
+        return extension
+
+    mimetype = (file_storage.mimetype or '').lower()
+    mime_extension = MIME_EXTENSION_MAP.get(mimetype, '')
+    if mime_extension in allowed_extensions:
+        return mime_extension
+
+    return extension
+
+
 def next_sequence(upload_dir: Path, patient_id: str, date_text: str, exam_name: str) -> int:
     prefix = f'{patient_id}~'
     suffix = f'~{date_text}~{exam_name}~RSB'
@@ -208,9 +236,10 @@ def create_app(config: dict | None = None, on_event=None) -> Flask:
             return jsonify({'error': '画像ファイルが選択されていません。'}), 400
 
         original_name = secure_filename(image.filename)
-        extension = original_name.rsplit('.', 1)[-1].lower() if '.' in original_name else ''
+        extension = extension_from_upload(image, original_name, allowed_extensions)
         if extension not in allowed_extensions:
-            return jsonify({'error': '対応していない画像形式です。'}), 400
+            detail = f"拡張子: {extension or 'なし'}, MIME: {image.mimetype or '不明'}"
+            return jsonify({'error': f'対応していないファイル形式です。{detail}'}), 400
 
         use_rsbase = request.form.get('use_rsbase', 'true').lower() == 'true'
         exam_name = request.form.get('exam_name', '').strip() or server_config['exam_names'][0]
