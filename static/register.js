@@ -1,6 +1,7 @@
 const form = document.querySelector("#registerForm");
 const deviceName = document.querySelector("#deviceName");
 const statusText = document.querySelector("#registerStatus");
+const completePanel = document.querySelector("#registrationComplete");
 const params = new URLSearchParams(window.location.search);
 const registrationToken = params.get("token") || "";
 
@@ -26,7 +27,9 @@ form.addEventListener("submit", async (event) => {
       throw new Error(result.error || "登録に失敗しました。");
     }
     localStorage.setItem("webcamera_device_token", result.device_token);
-    statusText.textContent = "登録しました。アップロード画面を開いて利用できます。";
+    form.hidden = true;
+    statusText.textContent = "";
+    completePanel.hidden = false;
   } catch (error) {
     statusText.textContent = error.message;
   }

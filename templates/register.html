@@ -22,8 +22,12 @@
           </label>
           <button type="submit">この端末を登録</button>
         </form>
+        <section id="registrationComplete" class="complete-panel" hidden>
+          <h2>登録完了</h2>
+          <p>この端末を登録しました。アップロード画面を開いて利用できます。</p>
+          <a class="uploaded-link" href="/">アップロード画面へ</a>
+        </section>
         <p id="registerStatus" class="status" role="status" aria-live="polite"></p>
-        <a class="uploaded-link" href="/">アップロード画面へ</a>
       </section>
     </main>
     <script src="{{ url_for('static', filename='register.js') }}"></script>

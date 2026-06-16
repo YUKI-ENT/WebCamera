@@ -164,6 +164,15 @@ function removeSelectedFile(index) {
   uploadedLink.hidden = true;
 }
 
+function clearSelectedFiles() {
+  selectedFiles = [];
+  [photoInput, galleryInput, videoInput].forEach((input) => {
+    input.value = "";
+  });
+  clearPreviews();
+  sendButton.disabled = true;
+}
+
 function handleFileSelection(input, kindLabel) {
   const files = Array.from(input.files || []);
   uploadedLink.hidden = true;
@@ -237,6 +246,7 @@ form.addEventListener("submit", async (event) => {
     statusText.textContent = count === 1 ? `${prefix} ${firstFile.filename}` : `${prefix} ${count}件保存しました。`;
     uploadedLink.href = firstFile.url;
     uploadedLink.hidden = false;
+    clearSelectedFiles();
   } catch (error) {
     statusText.textContent = error.message;
   } finally {

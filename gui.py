@@ -68,7 +68,7 @@ class ServerController:
 
     def start(self, config: dict, auth_manager=None) -> None:
         if self.is_running():
-            self.log_callback('Server is already running.')
+            self.log_callback('サーバーはすでに起動しています。')
             return
 
         self.config = config
@@ -80,12 +80,12 @@ class ServerController:
         self.thread = threading.Thread(target=self.server.serve_forever, daemon=True)
         self.thread.start()
         self.public_url = f'http://{display_host(host)}:{port}'
-        self.log_callback(f'Server started: {self.public_url}')
-        self.log_callback(f'Upload directory: {upload_dir}')
+        self.log_callback(f'サーバーを起動しました: {self.public_url}')
+        self.log_callback(f'保存先フォルダ: {upload_dir}')
 
     def stop(self) -> None:
         if not self.is_running() or self.server is None:
-            self.log_callback('Server is not running.')
+            self.log_callback('サーバーは起動していません。')
             return
 
         self.server.shutdown()
@@ -94,13 +94,13 @@ class ServerController:
         self.server = None
         self.thread = None
         self.public_url = ''
-        self.log_callback('Server stopped.')
+        self.log_callback('サーバーを停止しました。')
 
 
 class WebCameraGui(tk.Tk):
     def __init__(self):
         super().__init__()
-        self.title('WebCamera Server')
+        self.title('WebCamera サーバー')
         self.geometry('760x560')
         self.minsize(680, 500)
 
@@ -110,11 +110,13 @@ class WebCameraGui(tk.Tk):
         self.auth_manager = DeviceAuthManager(DEVICES_PATH)
         self.qr_photo = None
         self.registration_qr_photo = None
+        self.device_refresh_after_id = None
 
         self.create_widgets()
         self.load_config_to_form()
         self.update_auth_tab_state()
         self.refresh_devices()
+        self.schedule_device_refresh()
         self.after(100, self.flush_logs)
         self.after(250, self.auto_start_server)
         self.protocol('WM_DELETE_WINDOW', self.on_close)
@@ -127,15 +129,15 @@ class WebCameraGui(tk.Tk):
         self.auth_scroll = ScrollableTab(self.notebook)
         self.server_tab = self.server_scroll.content
         self.auth_tab = self.auth_scroll.content
-        self.notebook.add(self.server_scroll, text='Server')
-        self.notebook.add(self.auth_scroll, text='Device Auth')
+        self.notebook.add(self.server_scroll, text='サーバー')
+        self.notebook.add(self.auth_scroll, text='端末認証')
 
         self.server_tab.columnconfigure(0, weight=1)
         self.server_tab.rowconfigure(3, weight=0)
         self.auth_tab.columnconfigure(0, weight=1)
         self.auth_tab.rowconfigure(2, weight=0)
 
-        settings = ttk.LabelFrame(self.server_tab, text='Settings', padding=12)
+        settings = ttk.LabelFrame(self.server_tab, text='設定', padding=12)
         settings.grid(row=0, column=0, sticky='ew')
         settings.columnconfigure(1, weight=1)
 
@@ -148,47 +150,47 @@ class WebCameraGui(tk.Tk):
         self.config_vars['provisional_id'] = tk.StringVar()
         self.config_vars['device_auth_enabled'] = tk.BooleanVar()
 
-        self.add_row(settings, 0, 'Port', ttk.Entry(settings, textvariable=self.config_vars['port']))
+        self.add_row(settings, 0, 'ポート', ttk.Entry(settings, textvariable=self.config_vars['port']))
 
         upload_row = ttk.Frame(settings)
         upload_row.columnconfigure(0, weight=1)
         ttk.Entry(upload_row, textvariable=self.config_vars['upload_dir']).grid(row=0, column=0, sticky='ew')
-        ttk.Button(upload_row, text='Browse...', command=self.browse_upload_dir).grid(row=0, column=1, padx=(8, 0))
-        self.add_row(settings, 1, 'Upload directory', upload_row)
+        ttk.Button(upload_row, text='参照...', command=self.browse_upload_dir).grid(row=0, column=1, padx=(8, 0))
+        self.add_row(settings, 1, '保存先フォルダ', upload_row)
 
-        self.add_row(settings, 2, 'Max upload MB', ttk.Entry(settings, textvariable=self.config_vars['max_upload_mb']))
-        self.add_row(settings, 3, 'Extensions', ttk.Entry(settings, textvariable=self.config_vars['allowed_extensions']))
+        self.add_row(settings, 2, '最大アップロード容量(MB)', ttk.Entry(settings, textvariable=self.config_vars['max_upload_mb']))
+        self.add_row(settings, 3, '許可する拡張子', ttk.Entry(settings, textvariable=self.config_vars['allowed_extensions']))
 
         thept_row = ttk.Frame(settings)
         thept_row.columnconfigure(0, weight=1)
         ttk.Entry(thept_row, textvariable=self.config_vars['thept_path']).grid(row=0, column=0, sticky='ew')
-        ttk.Button(thept_row, text='Browse...', command=self.browse_thept_path).grid(row=0, column=1, padx=(8, 0))
-        self.add_row(settings, 4, 'thept.txt path', thept_row)
+        ttk.Button(thept_row, text='参照...', command=self.browse_thept_path).grid(row=0, column=1, padx=(8, 0))
+        self.add_row(settings, 4, 'thept.txt の場所', thept_row)
 
-        self.add_row(settings, 5, 'Exam names', ttk.Entry(settings, textvariable=self.config_vars['exam_names']))
-        self.add_row(settings, 6, 'Provisional ID', ttk.Entry(settings, textvariable=self.config_vars['provisional_id']))
-        ttk.Checkbutton(settings, text='Device auth enabled', variable=self.config_vars['device_auth_enabled']).grid(
+        self.add_row(settings, 5, '検査名リスト', ttk.Entry(settings, textvariable=self.config_vars['exam_names']))
+        self.add_row(settings, 6, '仮ID', ttk.Entry(settings, textvariable=self.config_vars['provisional_id']))
+        ttk.Checkbutton(settings, text='端末認証を有効にする', variable=self.config_vars['device_auth_enabled']).grid(
             row=7, column=1, sticky='w', pady=(8, 0)
         )
 
         controls = ttk.Frame(self.server_tab)
         controls.grid(row=1, column=0, sticky='ew', pady=12)
         controls.columnconfigure(3, weight=1)
-        ttk.Button(controls, text='Save settings', command=self.save_settings).grid(row=0, column=0, padx=(0, 8))
-        ttk.Button(controls, text='Start server', command=self.start_server_from_form).grid(row=0, column=1, padx=(0, 8))
-        ttk.Button(controls, text='Stop server', command=self.stop_server).grid(row=0, column=2, padx=(0, 8))
-        self.status_var = tk.StringVar(value='Stopped')
+        ttk.Button(controls, text='設定を保存', command=self.save_settings).grid(row=0, column=0, padx=(0, 8))
+        ttk.Button(controls, text='サーバー起動', command=self.start_server_from_form).grid(row=0, column=1, padx=(0, 8))
+        ttk.Button(controls, text='サーバー停止', command=self.stop_server).grid(row=0, column=2, padx=(0, 8))
+        self.status_var = tk.StringVar(value='停止中')
         ttk.Label(controls, textvariable=self.status_var, anchor='e').grid(row=0, column=3, sticky='e')
 
-        address_frame = ttk.LabelFrame(self.server_tab, text='Server Address', padding=8)
+        address_frame = ttk.LabelFrame(self.server_tab, text='サーバーアドレス', padding=8)
         address_frame.grid(row=2, column=0, sticky='ew', pady=(0, 12))
         address_frame.columnconfigure(0, weight=1)
-        self.server_url_var = tk.StringVar(value='Server is stopped.')
+        self.server_url_var = tk.StringVar(value='サーバーは停止中です。')
         ttk.Label(address_frame, textvariable=self.server_url_var).grid(row=0, column=0, sticky='ew')
-        self.qr_label = ttk.Label(address_frame, text='QR code will appear after startup.', anchor='center')
+        self.qr_label = ttk.Label(address_frame, text='起動後にQRコードを表示します。', anchor='center')
         self.qr_label.grid(row=1, column=0, sticky='ew', pady=(8, 0))
 
-        log_frame = ttk.LabelFrame(self.server_tab, text='Log', padding=8)
+        log_frame = ttk.LabelFrame(self.server_tab, text='ログ', padding=8)
         log_frame.grid(row=3, column=0, sticky='nsew')
         log_frame.columnconfigure(0, weight=1)
         log_frame.rowconfigure(0, weight=1)
@@ -199,42 +201,44 @@ class WebCameraGui(tk.Tk):
         scrollbar.grid(row=0, column=1, sticky='ns')
         self.log_text.configure(yscrollcommand=scrollbar.set)
 
-        auth_settings = ttk.LabelFrame(self.auth_tab, text='Device Auth', padding=12)
+        auth_settings = ttk.LabelFrame(self.auth_tab, text='端末認証', padding=12)
         auth_settings.grid(row=0, column=0, sticky='ew')
-        self.auth_tab_status_var = tk.StringVar(value='Device auth is disabled.')
+        self.auth_tab_status_var = tk.StringVar(value='端末認証は無効です。')
         ttk.Label(auth_settings, textvariable=self.auth_tab_status_var).grid(row=0, column=0, sticky='w')
-        ttk.Label(auth_settings, text='Enable Device auth in Server > Settings, save, then restart the server.').grid(
-            row=1, column=0, sticky='w', pady=(6, 0)
-        )
+        ttk.Label(
+            auth_settings,
+            text='サーバー > 設定で端末認証を有効にして保存し、サーバーを再起動してください。',
+            wraplength=620,
+        ).grid(row=1, column=0, sticky='w', pady=(6, 0))
 
-        device_frame = ttk.LabelFrame(self.auth_tab, text='Device Tokens', padding=8)
+        device_frame = ttk.LabelFrame(self.auth_tab, text='端末登録用QR', padding=8)
         device_frame.grid(row=1, column=0, sticky='ew', pady=12)
         device_frame.columnconfigure(0, weight=1)
         device_controls = ttk.Frame(device_frame)
         device_controls.grid(row=0, column=0, sticky='ew')
         self.create_registration_button = ttk.Button(
             device_controls,
-            text='Create registration QR',
+            text='登録用QRを作成',
             command=self.create_registration_qr,
         )
         self.create_registration_button.grid(row=0, column=0, padx=(0, 8))
-        self.delete_device_button = ttk.Button(device_controls, text='Delete selected', command=self.delete_selected_device)
+        self.delete_device_button = ttk.Button(device_controls, text='選択した端末を削除', command=self.delete_selected_device)
         self.delete_device_button.grid(row=0, column=1, padx=(0, 8))
-        self.refresh_devices_button = ttk.Button(device_controls, text='Refresh', command=self.refresh_devices)
+        self.refresh_devices_button = ttk.Button(device_controls, text='更新', command=self.refresh_devices)
         self.refresh_devices_button.grid(row=0, column=2)
         self.registration_url_var = tk.StringVar(value='')
         ttk.Label(device_frame, textvariable=self.registration_url_var).grid(row=1, column=0, sticky='ew', pady=(8, 0))
-        self.registration_qr_label = ttk.Label(device_frame, text='Registration QR will appear here.', anchor='center')
+        self.registration_qr_label = ttk.Label(device_frame, text='ここに登録用QRコードを表示します。', anchor='center')
         self.registration_qr_label.grid(row=2, column=0, sticky='ew', pady=(8, 0))
 
-        list_frame = ttk.LabelFrame(self.auth_tab, text='Registered Devices', padding=8)
+        list_frame = ttk.LabelFrame(self.auth_tab, text='登録済み端末', padding=8)
         list_frame.grid(row=2, column=0, sticky='nsew')
         list_frame.columnconfigure(0, weight=1)
         list_frame.rowconfigure(0, weight=1)
         self.device_tree = ttk.Treeview(list_frame, columns=('name', 'created_at', 'last_seen_at'), show='headings', height=8)
-        self.device_tree.heading('name', text='Name')
-        self.device_tree.heading('created_at', text='Created')
-        self.device_tree.heading('last_seen_at', text='Last seen')
+        self.device_tree.heading('name', text='端末名')
+        self.device_tree.heading('created_at', text='登録日時')
+        self.device_tree.heading('last_seen_at', text='最終アクセス')
         self.device_tree.column('name', width=180)
         self.device_tree.column('created_at', width=190)
         self.device_tree.column('last_seen_at', width=190)
@@ -257,7 +261,7 @@ class WebCameraGui(tk.Tk):
         self.config_vars['exam_names'].set(', '.join(config.get('exam_names', ['カメラ'])))
         self.config_vars['provisional_id'].set(str(config.get('provisional_id', '999999')))
         self.config_vars['device_auth_enabled'].set(bool(config.get('device_auth_enabled', False)))
-        self.enqueue_log(f'Config loaded: {CONFIG_PATH}')
+        self.enqueue_log(f'設定を読み込みました: {CONFIG_PATH}')
 
     def config_from_form(self) -> dict:
         extensions = [
@@ -266,23 +270,23 @@ class WebCameraGui(tk.Tk):
             if extension.strip()
         ]
         if not extensions:
-            raise ValueError('Extensions must not be empty.')
+            raise ValueError('許可する拡張子を1つ以上入力してください。')
 
         port = int(self.config_vars['port'].get())
         if port < 1 or port > 65535:
-            raise ValueError('Port must be between 1 and 65535.')
+            raise ValueError('ポートは1から65535の範囲で入力してください。')
 
         max_upload_mb = int(self.config_vars['max_upload_mb'].get())
         if max_upload_mb < 1:
-            raise ValueError('Max upload MB must be 1 or greater.')
+            raise ValueError('最大アップロード容量は1MB以上にしてください。')
 
         upload_dir = self.config_vars['upload_dir'].get().strip()
         if not upload_dir:
-            raise ValueError('Upload directory must not be empty.')
+            raise ValueError('保存先フォルダを入力してください。')
 
         thept_path = self.config_vars['thept_path'].get().strip()
         if not thept_path:
-            raise ValueError('thept.txt path must not be empty.')
+            raise ValueError('thept.txt の場所を入力してください。')
 
         exam_names = [
             exam.strip()
@@ -290,11 +294,11 @@ class WebCameraGui(tk.Tk):
             if exam.strip()
         ]
         if not exam_names:
-            raise ValueError('Exam names must not be empty.')
+            raise ValueError('検査名リストを1つ以上入力してください。')
 
         provisional_id = self.config_vars['provisional_id'].get().strip()
         if not provisional_id:
-            raise ValueError('Provisional ID must not be empty.')
+            raise ValueError('仮IDを入力してください。')
 
         current_config = load_config()
         return {
@@ -322,7 +326,7 @@ class WebCameraGui(tk.Tk):
         initial_dir = str(Path(current).parent) if current else str(Path.cwd())
         selected = filedialog.askopenfilename(
             initialdir=initial_dir,
-            filetypes=[('Text files', '*.txt'), ('All files', '*.*')],
+            filetypes=[('テキストファイル', '*.txt'), ('すべてのファイル', '*.*')],
         )
         if selected:
             self.config_vars['thept_path'].set(selected)
@@ -332,11 +336,11 @@ class WebCameraGui(tk.Tk):
             config = self.config_from_form()
             save_config(config)
         except Exception as error:
-            messagebox.showerror('Settings error', str(error))
-            self.enqueue_log(f'Settings error: {error}')
+            messagebox.showerror('設定エラー', str(error))
+            self.enqueue_log(f'設定エラー: {error}')
             return None
 
-        self.enqueue_log(f'Settings saved: {CONFIG_PATH}')
+        self.enqueue_log(f'設定を保存しました: {CONFIG_PATH}')
         self.update_auth_tab_state()
         return config
 
@@ -348,31 +352,31 @@ class WebCameraGui(tk.Tk):
         try:
             self.server.start(config, auth_manager=self.auth_manager)
         except Exception as error:
-            self.status_var.set('Stopped')
-            messagebox.showerror('Server error', str(error))
-            self.enqueue_log(f'Server error: {error}')
+            self.status_var.set('停止中')
+            messagebox.showerror('サーバーエラー', str(error))
+            self.enqueue_log(f'サーバーエラー: {error}')
             return
 
-        self.status_var.set('Running')
+        self.status_var.set('起動中')
         self.update_auth_tab_state()
         self.update_server_address()
 
     def auto_start_server(self) -> None:
-        self.enqueue_log('Auto starting server...')
+        self.enqueue_log('サーバーを自動起動しています...')
         self.start_server_from_form()
 
     def stop_server(self) -> None:
         self.server.stop()
-        self.status_var.set('Stopped')
-        self.server_url_var.set('Server is stopped.')
+        self.status_var.set('停止中')
+        self.server_url_var.set('サーバーは停止中です。')
         self.qr_photo = None
-        self.qr_label.configure(image='', text='QR code will appear after startup.')
+        self.qr_label.configure(image='', text='起動後にQRコードを表示します。')
         self.update_auth_tab_state()
 
     def update_server_address(self) -> None:
         url = self.server.public_url
         if not url:
-            self.server_url_var.set('Server is stopped.')
+            self.server_url_var.set('サーバーは停止中です。')
             return
 
         self.server_url_var.set(url)
@@ -380,7 +384,7 @@ class WebCameraGui(tk.Tk):
             self.qr_photo = None
             self.qr_label.configure(
                 image='',
-                text='Device auth is enabled. Use the registration QR on the Device Auth tab.',
+                text='端末認証が有効です。端末認証タブの登録用QRを使用してください。',
             )
             return
 
@@ -393,12 +397,12 @@ class WebCameraGui(tk.Tk):
             self.qr_label.configure(image=self.qr_photo, text='')
         except Exception as error:
             self.qr_photo = None
-            self.qr_label.configure(image='', text=f'QR unavailable: {error}')
-            self.enqueue_log(f'QR unavailable: {error}')
+            self.qr_label.configure(image='', text=f'QRコードを表示できません: {error}')
+            self.enqueue_log(f'QRコードを表示できません: {error}')
 
     def create_registration_qr(self) -> None:
         if not self.server.public_url:
-            messagebox.showwarning('Server stopped', 'Start server before creating a registration QR.')
+            messagebox.showwarning('サーバー停止中', '登録用QRを作成する前にサーバーを起動してください。')
             return
 
         token = self.auth_manager.create_registration_token(ttl_seconds=300)
@@ -413,9 +417,9 @@ class WebCameraGui(tk.Tk):
             self.registration_qr_label.configure(image=self.registration_qr_photo, text='')
         except Exception as error:
             self.registration_qr_photo = None
-            self.registration_qr_label.configure(image='', text=f'QR unavailable: {error}')
-            self.enqueue_log(f'Registration QR unavailable: {error}')
-        self.enqueue_log('Registration QR created. It expires in 5 minutes and can be used once.')
+            self.registration_qr_label.configure(image='', text=f'QRコードを表示できません: {error}')
+            self.enqueue_log(f'登録用QRコードを表示できません: {error}')
+        self.enqueue_log('登録用QRを作成しました。有効期限は5分で、1回だけ使用できます。')
 
     def refresh_devices(self) -> None:
         if not hasattr(self, 'device_tree'):
@@ -430,16 +434,27 @@ class WebCameraGui(tk.Tk):
                 values=(device.get('name', ''), device.get('created_at', ''), device.get('last_seen_at', '')),
             )
 
+    def schedule_device_refresh(self) -> None:
+        if self.device_refresh_after_id is not None:
+            self.after_cancel(self.device_refresh_after_id)
+        self.device_refresh_after_id = self.after(2000, self.auto_refresh_devices)
+
+    def auto_refresh_devices(self) -> None:
+        self.device_refresh_after_id = None
+        if self.is_auth_active():
+            self.refresh_devices()
+        self.schedule_device_refresh()
+
     def delete_selected_device(self) -> None:
         selected = self.device_tree.selection()
         if not selected:
-            messagebox.showinfo('Device tokens', 'Select a device first.')
+            messagebox.showinfo('端末認証', '先に端末を選択してください。')
             return
         device_id = selected[0]
-        if not messagebox.askyesno('Delete device', 'Delete selected device token?'):
+        if not messagebox.askyesno('端末の削除', '選択した端末の認証トークンを削除しますか？'):
             return
         if self.auth_manager.delete_device(device_id):
-            self.enqueue_log(f'Device deleted: {device_id}')
+            self.enqueue_log(f'端末を削除しました: {device_id}')
         self.refresh_devices()
 
     def is_auth_active(self) -> bool:
@@ -454,15 +469,15 @@ class WebCameraGui(tk.Tk):
             self.refresh_devices_button.configure(state=state)
         if hasattr(self, 'auth_tab_status_var'):
             if enabled:
-                self.auth_tab_status_var.set('Device auth is active. You can register and manage devices here.')
+                self.auth_tab_status_var.set('端末認証は有効です。この画面で端末の登録と削除ができます。')
             else:
-                self.auth_tab_status_var.set('Device auth is disabled or server has not been restarted with auth enabled.')
+                self.auth_tab_status_var.set('端末認証は無効、または有効化後にサーバーが再起動されていません。')
         if self.server.public_url:
             self.update_server_address()
         if hasattr(self, 'registration_qr_label') and not enabled:
-            self.registration_url_var.set('Device auth is not active.')
+            self.registration_url_var.set('端末認証は有効ではありません。')
             self.registration_qr_photo = None
-            self.registration_qr_label.configure(image='', text='Enable device auth in Settings and restart server.')
+            self.registration_qr_label.configure(image='', text='設定で端末認証を有効にし、サーバーを再起動してください。')
 
     def enqueue_log(self, message: str) -> None:
         timestamp = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
@@ -483,6 +498,9 @@ class WebCameraGui(tk.Tk):
         self.after(100, self.flush_logs)
 
     def on_close(self) -> None:
+        if self.device_refresh_after_id is not None:
+            self.after_cancel(self.device_refresh_after_id)
+            self.device_refresh_after_id = None
         if self.server.is_running():
             self.server.stop()
         self.destroy()
