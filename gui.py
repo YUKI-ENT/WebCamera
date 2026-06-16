@@ -170,7 +170,7 @@ class WebCameraGui(tk.Tk):
 
         self.add_row(settings, 5, '検査名リスト', ttk.Entry(settings, textvariable=self.config_vars['exam_names']))
         self.add_row(settings, 6, 'ID空欄時の仮番号', ttk.Entry(settings, textvariable=self.config_vars['provisional_id']))
-        ttk.Checkbutton(settings, text='アップロード許可端末認証を有効にする(要再起動)', variable=self.config_vars['device_auth_enabled']).grid(
+        ttk.Checkbutton(settings, text='端末認証を有効にする(要再起動)：許可された端末のみアップロード可能になります', variable=self.config_vars['device_auth_enabled']).grid(
             row=7, column=1, sticky='w', pady=(8, 0)
         )
 
