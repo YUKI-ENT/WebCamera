@@ -2,7 +2,7 @@ import queue
 import socket
 import threading
 import tkinter as tk
-from datetime import datetime
+from datetime import datetime, timedelta
 from pathlib import Path
 from tkinter import filedialog, messagebox, ttk
 
@@ -111,12 +111,13 @@ class WebCameraGui(tk.Tk):
         self.qr_photo = None
         self.registration_qr_photo = None
         self.device_refresh_after_id = None
+        self.registration_watch_device_ids = set()
+        self.registration_watch_until = None
 
         self.create_widgets()
         self.load_config_to_form()
         self.update_auth_tab_state()
         self.refresh_devices()
-        self.schedule_device_refresh()
         self.after(100, self.flush_logs)
         self.after(250, self.auto_start_server)
         self.protocol('WM_DELETE_WINDOW', self.on_close)
@@ -168,8 +169,8 @@ class WebCameraGui(tk.Tk):
         self.add_row(settings, 4, 'thept.txt の場所', thept_row)
 
         self.add_row(settings, 5, '検査名リスト', ttk.Entry(settings, textvariable=self.config_vars['exam_names']))
-        self.add_row(settings, 6, '仮ID', ttk.Entry(settings, textvariable=self.config_vars['provisional_id']))
-        ttk.Checkbutton(settings, text='端末認証を有効にする', variable=self.config_vars['device_auth_enabled']).grid(
+        self.add_row(settings, 6, 'ID空欄時の仮番号', ttk.Entry(settings, textvariable=self.config_vars['provisional_id']))
+        ttk.Checkbutton(settings, text='アップロード許可端末認証を有効にする(要再起動)', variable=self.config_vars['device_auth_enabled']).grid(
             row=7, column=1, sticky='w', pady=(8, 0)
         )
 
@@ -380,13 +381,6 @@ class WebCameraGui(tk.Tk):
             return
 
         self.server_url_var.set(url)
-        if self.is_auth_active():
-            self.qr_photo = None
-            self.qr_label.configure(
-                image='',
-                text='端末認証が有効です。端末認証タブの登録用QRを使用してください。',
-            )
-            return
 
         try:
             import qrcode
@@ -405,6 +399,8 @@ class WebCameraGui(tk.Tk):
             messagebox.showwarning('サーバー停止中', '登録用QRを作成する前にサーバーを起動してください。')
             return
 
+        self.registration_watch_device_ids = {device['id'] for device in self.auth_manager.list_devices()}
+        self.registration_watch_until = datetime.now() + timedelta(minutes=5)
         token = self.auth_manager.create_registration_token(ttl_seconds=300)
         url = f'{self.server.public_url}/register?token={token}'
         self.registration_url_var.set(url)
@@ -419,6 +415,7 @@ class WebCameraGui(tk.Tk):
             self.registration_qr_photo = None
             self.registration_qr_label.configure(image='', text=f'QRコードを表示できません: {error}')
             self.enqueue_log(f'登録用QRコードを表示できません: {error}')
+        self.schedule_device_refresh()
         self.enqueue_log('登録用QRを作成しました。有効期限は5分で、1回だけ使用できます。')
 
     def refresh_devices(self) -> None:
@@ -439,10 +436,37 @@ class WebCameraGui(tk.Tk):
             self.after_cancel(self.device_refresh_after_id)
         self.device_refresh_after_id = self.after(2000, self.auto_refresh_devices)
 
+    def stop_device_refresh(self) -> None:
+        if self.device_refresh_after_id is not None:
+            self.after_cancel(self.device_refresh_after_id)
+            self.device_refresh_after_id = None
+
+    def clear_registration_qr(self, message: str) -> None:
+        self.registration_url_var.set('')
+        self.registration_qr_photo = None
+        self.registration_qr_label.configure(image='', text=message)
+
     def auto_refresh_devices(self) -> None:
         self.device_refresh_after_id = None
-        if self.is_auth_active():
+        if not self.is_auth_active():
+            return
+
+        devices = self.auth_manager.list_devices()
+        current_ids = {device['id'] for device in devices}
+        if current_ids - self.registration_watch_device_ids:
             self.refresh_devices()
+            self.clear_registration_qr('端末登録が完了しました。')
+            self.registration_watch_device_ids = current_ids
+            self.registration_watch_until = None
+            self.enqueue_log('新しい端末登録を検知しました。')
+            return
+
+        if self.registration_watch_until and datetime.now() >= self.registration_watch_until:
+            self.clear_registration_qr('登録用QRの有効期限が切れました。')
+            self.registration_watch_until = None
+            self.enqueue_log('登録用QRの有効期限が切れました。')
+            return
+
         self.schedule_device_refresh()
 
     def delete_selected_device(self) -> None:
@@ -458,7 +482,11 @@ class WebCameraGui(tk.Tk):
         self.refresh_devices()
 
     def is_auth_active(self) -> bool:
-        return bool(self.server.config and self.server.config.get('device_auth_enabled', False))
+        return bool(
+            self.server.is_running()
+            and self.server.config
+            and self.server.config.get('device_auth_enabled', False)
+        )
 
     def update_auth_tab_state(self) -> None:
         enabled = self.is_auth_active()
@@ -475,6 +503,7 @@ class WebCameraGui(tk.Tk):
         if self.server.public_url:
             self.update_server_address()
         if hasattr(self, 'registration_qr_label') and not enabled:
+            self.stop_device_refresh()
             self.registration_url_var.set('端末認証は有効ではありません。')
             self.registration_qr_photo = None
             self.registration_qr_label.configure(image='', text='設定で端末認証を有効にし、サーバーを再起動してください。')
@@ -498,9 +527,7 @@ class WebCameraGui(tk.Tk):
         self.after(100, self.flush_logs)
 
     def on_close(self) -> None:
-        if self.device_refresh_after_id is not None:
-            self.after_cancel(self.device_refresh_after_id)
-            self.device_refresh_after_id = None
+        self.stop_device_refresh()
         if self.server.is_running():
             self.server.stop()
         self.destroy()
