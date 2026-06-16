@@ -11,12 +11,15 @@ from flask import Flask, jsonify, render_template, request, send_from_directory
 from werkzeug.exceptions import HTTPException, RequestEntityTooLarge
 from werkzeug.utils import secure_filename
 
+from auth import DeviceAuthManager
+
 
 APP_DIR = Path(sys.executable).resolve().parent if getattr(sys, 'frozen', False) else Path(__file__).resolve().parent
 RESOURCE_DIR = Path(getattr(sys, '_MEIPASS', APP_DIR))
 CONFIG_PATH = APP_DIR / 'config.json'
 CONFIG_SAMPLE_PATH = APP_DIR / 'config.json.sample'
 BUNDLED_CONFIG_SAMPLE_PATH = RESOURCE_DIR / 'config.json.sample'
+DEVICES_PATH = APP_DIR / 'devices.json'
 
 
 DEFAULT_CONFIG = {
@@ -29,6 +32,7 @@ DEFAULT_CONFIG = {
     'thept_path': r'C:\common\thept.txt',
     'exam_names': ['カメラ'],
     'provisional_id': '999999',
+    'device_auth_enabled': False,
 }
 
 
@@ -82,6 +86,7 @@ def save_config(config: dict) -> None:
     clean_config['upload_dir'] = str(clean_config['upload_dir'])
     clean_config['thept_path'] = str(clean_config['thept_path'])
     clean_config['provisional_id'] = str(clean_config['provisional_id']).strip() or DEFAULT_CONFIG['provisional_id']
+    clean_config['device_auth_enabled'] = bool(clean_config['device_auth_enabled'])
     clean_config['allowed_extensions'] = [
         extension.lower().lstrip('.') for extension in clean_list(clean_config['allowed_extensions'])
     ]
@@ -104,6 +109,7 @@ def normalize_config(config: dict | None = None) -> dict:
     normalized['exam_names'] = clean_list(normalized['exam_names']) or DEFAULT_CONFIG['exam_names']
     normalized['thept_path'] = str(normalized['thept_path'])
     normalized['provisional_id'] = str(normalized['provisional_id']).strip() or DEFAULT_CONFIG['provisional_id']
+    normalized['device_auth_enabled'] = bool(normalized['device_auth_enabled'])
 
     upload_dir = Path(normalized['upload_dir'])
     normalized['upload_dir'] = upload_dir if upload_dir.is_absolute() else APP_DIR / upload_dir
@@ -197,10 +203,11 @@ def create_rsbase_filename(upload_dir: Path, patient_id: str, exam_name: str, ex
     return f'{safe_id}~{sequence:04d}~{date_text}~{safe_exam}~RSB.{normalize_output_extension(extension)}'
 
 
-def create_app(config: dict | None = None, on_event=None) -> Flask:
+def create_app(config: dict | None = None, on_event=None, auth_manager: DeviceAuthManager | None = None) -> Flask:
     server_config = normalize_config(config)
     upload_dir = server_config['upload_dir']
     allowed_extensions = server_config['allowed_extensions']
+    auth_manager = auth_manager or DeviceAuthManager(DEVICES_PATH)
 
     app = Flask(
         __name__,
@@ -214,6 +221,16 @@ def create_app(config: dict | None = None, on_event=None) -> Flask:
     def emit(message: str) -> None:
         if on_event is not None:
             on_event(message)
+
+    def device_token_from_request() -> str:
+        return request.headers.get('X-Device-Token', '') or request.form.get('device_token', '')
+
+    def require_device_auth():
+        if not server_config['device_auth_enabled']:
+            return None
+        if auth_manager.validate_device_token(device_token_from_request()):
+            return None
+        return jsonify({'error': 'この端末は登録されていません。サーバーGUIで端末登録してください。'}), 403
 
     @app.errorhandler(RequestEntityTooLarge)
     def request_entity_too_large(error):
@@ -235,17 +252,38 @@ def create_app(config: dict | None = None, on_event=None) -> Flask:
 
     @app.get('/settings')
     def settings():
+        token = device_token_from_request()
         return jsonify({
             'exam_names': server_config['exam_names'],
             'provisional_id': server_config['provisional_id'],
+            'device_auth_enabled': server_config['device_auth_enabled'],
+            'device_registered': (not server_config['device_auth_enabled']) or auth_manager.validate_device_token(token),
         })
 
     @app.get('/patient')
     def patient():
         return jsonify(parse_thept(server_config['thept_path']))
 
+    @app.get('/register')
+    def register_page():
+        return render_template('register.html')
+
+    @app.post('/api/register-device')
+    def register_device():
+        payload = request.get_json(silent=True) or {}
+        registration_token = str(payload.get('registration_token', '')).strip()
+        device_name = str(payload.get('device_name', '')).strip()
+        ok, device_token, device = auth_manager.register_device(registration_token, device_name)
+        if not ok:
+            return jsonify({'error': '登録用QRが無効または期限切れです。'}), 400
+        emit(f"Device registered: {device['name']}")
+        return jsonify({'device_token': device_token, 'device': device})
+
     @app.post('/upload')
     def upload():
+        auth_error = require_device_auth()
+        if auth_error is not None:
+            return auth_error
         images = [file for file in request.files.getlist('image') if file and file.filename]
         if not images:
             return jsonify({'error': 'ファイルが選択されていません。'}), 400

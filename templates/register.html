@@ -1,0 +1,31 @@
+<!doctype html>
+<html lang="ja">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>端末登録</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='styles.css') }}">
+  </head>
+  <body>
+    <main class="app">
+      <section class="panel">
+        <div class="heading">
+          <div>
+            <p class="eyebrow">WebCamera</p>
+            <h1>端末登録</h1>
+          </div>
+        </div>
+        <form id="registerForm" class="upload-form">
+          <label class="field">
+            <span>端末名</span>
+            <input id="deviceName" type="text" autocomplete="off" placeholder="例: 診察室スマホ">
+          </label>
+          <button type="submit">この端末を登録</button>
+        </form>
+        <p id="registerStatus" class="status" role="status" aria-live="polite"></p>
+        <a class="uploaded-link" href="/">アップロード画面へ</a>
+      </section>
+    </main>
+    <script src="{{ url_for('static', filename='register.js') }}"></script>
+  </body>
+</html>

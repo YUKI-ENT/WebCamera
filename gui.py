@@ -8,7 +8,8 @@ from tkinter import filedialog, messagebox, ttk
 
 from werkzeug.serving import make_server
 
-from app import CONFIG_PATH, create_app, load_config, save_config
+from app import APP_DIR, CONFIG_PATH, DEVICES_PATH, create_app, load_config, save_config
+from auth import DeviceAuthManager
 
 
 def get_lan_ip() -> str:
@@ -38,13 +39,13 @@ class ServerController:
     def is_running(self) -> bool:
         return self.thread is not None and self.thread.is_alive()
 
-    def start(self, config: dict) -> None:
+    def start(self, config: dict, auth_manager=None) -> None:
         if self.is_running():
             self.log_callback('Server is already running.')
             return
 
         self.config = config
-        app = create_app(config, on_event=self.log_callback)
+        app = create_app(config, on_event=self.log_callback, auth_manager=auth_manager)
         host = app.config['APP_CONFIG']['host']
         port = app.config['APP_CONFIG']['port']
         upload_dir = app.config['APP_CONFIG']['upload_dir']
@@ -79,10 +80,13 @@ class WebCameraGui(tk.Tk):
         self.log_queue = queue.Queue()
         self.server = ServerController(self.enqueue_log)
         self.config_vars = {}
+        self.auth_manager = DeviceAuthManager(DEVICES_PATH)
         self.qr_photo = None
+        self.registration_qr_photo = None
 
         self.create_widgets()
         self.load_config_to_form()
+        self.refresh_devices()
         self.after(100, self.flush_logs)
         self.after(250, self.auto_start_server)
         self.protocol('WM_DELETE_WINDOW', self.on_close)
@@ -91,7 +95,7 @@ class WebCameraGui(tk.Tk):
         root = ttk.Frame(self, padding=16)
         root.pack(fill='both', expand=True)
         root.columnconfigure(0, weight=1)
-        root.rowconfigure(3, weight=1)
+        root.rowconfigure(4, weight=1)
 
         settings = ttk.LabelFrame(root, text='Settings', padding=12)
         settings.grid(row=0, column=0, sticky='ew')
@@ -104,6 +108,7 @@ class WebCameraGui(tk.Tk):
         self.config_vars['thept_path'] = tk.StringVar()
         self.config_vars['exam_names'] = tk.StringVar()
         self.config_vars['provisional_id'] = tk.StringVar()
+        self.config_vars['device_auth_enabled'] = tk.BooleanVar()
 
         self.add_row(settings, 0, 'Port', ttk.Entry(settings, textvariable=self.config_vars['port']))
 
@@ -124,6 +129,9 @@ class WebCameraGui(tk.Tk):
 
         self.add_row(settings, 5, 'Exam names', ttk.Entry(settings, textvariable=self.config_vars['exam_names']))
         self.add_row(settings, 6, 'Provisional ID', ttk.Entry(settings, textvariable=self.config_vars['provisional_id']))
+        ttk.Checkbutton(settings, text='Device auth enabled', variable=self.config_vars['device_auth_enabled']).grid(
+            row=7, column=1, sticky='w', pady=(8, 0)
+        )
 
         controls = ttk.Frame(root)
         controls.grid(row=1, column=0, sticky='ew', pady=12)
@@ -142,8 +150,26 @@ class WebCameraGui(tk.Tk):
         self.qr_label = ttk.Label(address_frame, text='QR code will appear after startup.', anchor='center')
         self.qr_label.grid(row=1, column=0, sticky='ew', pady=(8, 0))
 
+        device_frame = ttk.LabelFrame(root, text='Device Tokens', padding=8)
+        device_frame.grid(row=3, column=0, sticky='ew', pady=(0, 12))
+        device_frame.columnconfigure(0, weight=1)
+        device_controls = ttk.Frame(device_frame)
+        device_controls.grid(row=0, column=0, sticky='ew')
+        ttk.Button(device_controls, text='Create registration QR', command=self.create_registration_qr).grid(row=0, column=0, padx=(0, 8))
+        ttk.Button(device_controls, text='Delete selected', command=self.delete_selected_device).grid(row=0, column=1, padx=(0, 8))
+        ttk.Button(device_controls, text='Refresh', command=self.refresh_devices).grid(row=0, column=2)
+        self.registration_url_var = tk.StringVar(value='')
+        ttk.Label(device_frame, textvariable=self.registration_url_var).grid(row=1, column=0, sticky='ew', pady=(8, 0))
+        self.registration_qr_label = ttk.Label(device_frame, text='Registration QR will appear here.', anchor='center')
+        self.registration_qr_label.grid(row=2, column=0, sticky='ew', pady=(8, 0))
+        self.device_tree = ttk.Treeview(device_frame, columns=('name', 'created_at', 'last_seen_at'), show='headings', height=4)
+        self.device_tree.heading('name', text='Name')
+        self.device_tree.heading('created_at', text='Created')
+        self.device_tree.heading('last_seen_at', text='Last seen')
+        self.device_tree.grid(row=3, column=0, sticky='ew', pady=(8, 0))
+
         log_frame = ttk.LabelFrame(root, text='Log', padding=8)
-        log_frame.grid(row=3, column=0, sticky='nsew')
+        log_frame.grid(row=4, column=0, sticky='nsew')
         log_frame.columnconfigure(0, weight=1)
         log_frame.rowconfigure(0, weight=1)
 
@@ -166,6 +192,7 @@ class WebCameraGui(tk.Tk):
         self.config_vars['thept_path'].set(str(config.get('thept_path', r'C:\\common\\thept.txt')))
         self.config_vars['exam_names'].set(', '.join(config.get('exam_names', ['カメラ'])))
         self.config_vars['provisional_id'].set(str(config.get('provisional_id', '999999')))
+        self.config_vars['device_auth_enabled'].set(bool(config.get('device_auth_enabled', False)))
         self.enqueue_log(f'Config loaded: {CONFIG_PATH}')
 
     def config_from_form(self) -> dict:
@@ -216,6 +243,7 @@ class WebCameraGui(tk.Tk):
             'thept_path': thept_path,
             'exam_names': exam_names,
             'provisional_id': provisional_id,
+            'device_auth_enabled': bool(self.config_vars['device_auth_enabled'].get()),
         }
 
     def browse_upload_dir(self) -> None:
@@ -253,7 +281,7 @@ class WebCameraGui(tk.Tk):
             return
 
         try:
-            self.server.start(config)
+            self.server.start(config, auth_manager=self.auth_manager)
         except Exception as error:
             self.status_var.set('Stopped')
             messagebox.showerror('Server error', str(error))
@@ -292,6 +320,52 @@ class WebCameraGui(tk.Tk):
             self.qr_photo = None
             self.qr_label.configure(image='', text=f'QR unavailable: {error}')
             self.enqueue_log(f'QR unavailable: {error}')
+
+    def create_registration_qr(self) -> None:
+        if not self.server.public_url:
+            messagebox.showwarning('Server stopped', 'Start server before creating a registration QR.')
+            return
+
+        token = self.auth_manager.create_registration_token(ttl_seconds=300)
+        url = f'{self.server.public_url}/register?token={token}'
+        self.registration_url_var.set(url)
+        try:
+            import qrcode
+            from PIL import ImageTk
+
+            image = qrcode.make(url).resize((180, 180))
+            self.registration_qr_photo = ImageTk.PhotoImage(image)
+            self.registration_qr_label.configure(image=self.registration_qr_photo, text='')
+        except Exception as error:
+            self.registration_qr_photo = None
+            self.registration_qr_label.configure(image='', text=f'QR unavailable: {error}')
+            self.enqueue_log(f'Registration QR unavailable: {error}')
+        self.enqueue_log('Registration QR created. It expires in 5 minutes and can be used once.')
+
+    def refresh_devices(self) -> None:
+        if not hasattr(self, 'device_tree'):
+            return
+        for item in self.device_tree.get_children():
+            self.device_tree.delete(item)
+        for device in self.auth_manager.list_devices():
+            self.device_tree.insert(
+                '',
+                'end',
+                iid=device['id'],
+                values=(device.get('name', ''), device.get('created_at', ''), device.get('last_seen_at', '')),
+            )
+
+    def delete_selected_device(self) -> None:
+        selected = self.device_tree.selection()
+        if not selected:
+            messagebox.showinfo('Device tokens', 'Select a device first.')
+            return
+        device_id = selected[0]
+        if not messagebox.askyesno('Delete device', 'Delete selected device token?'):
+            return
+        if self.auth_manager.delete_device(device_id):
+            self.enqueue_log(f'Device deleted: {device_id}')
+        self.refresh_devices()
 
     def enqueue_log(self, message: str) -> None:
         timestamp = datetime.now().strftime('%Y-%m-%d %H:%M:%S')

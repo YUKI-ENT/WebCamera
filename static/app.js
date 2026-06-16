@@ -16,6 +16,7 @@ const linkedPatientName = document.querySelector("#linkedPatientName");
 const examName = document.querySelector("#examName");
 const modeBadge = document.querySelector("#modeBadge");
 const manualHint = document.querySelector("#manualHint");
+const DEVICE_TOKEN_KEY = "webcamera_device_token";
 
 let currentPatient = { id: "", name: "", available: false };
 let provisionalId = "999999";
@@ -37,9 +38,14 @@ function updateManualMode() {
   }
 }
 
+function deviceHeaders() {
+  const token = localStorage.getItem(DEVICE_TOKEN_KEY) || "";
+  return token ? { "X-Device-Token": token } : {};
+}
+
 async function loadSettings() {
   try {
-    const response = await fetch("/settings");
+    const response = await fetch("/settings", { headers: deviceHeaders() });
     const settings = await response.json();
     const names = settings.exam_names && settings.exam_names.length ? settings.exam_names : ["カメラ"];
     provisionalId = settings.provisional_id || "999999";
@@ -91,15 +97,8 @@ function clearPreviews() {
   videoPreview.load();
 }
 
-function resetOtherInputs(activeInput) {
-  [photoInput, galleryInput, videoInput].forEach((input) => {
-    if (input !== activeInput) {
-      input.value = "";
-    }
-  });
-}
-
 function renderSelectedPreviews() {
+  revokeObjectUrls();
   previewGrid.hidden = false;
   previewGrid.replaceChildren(
     ...selectedFiles.map((file, index) => {
@@ -137,15 +136,14 @@ function renderSelectedPreviews() {
   );
 }
 
-function updateSelectionStatus(kindLabel = "ファイル") {
+function updateSelectionStatus(message = "") {
   sendButton.disabled = selectedFiles.length === 0;
   if (!selectedFiles.length) {
     statusText.textContent = "";
     return;
   }
 
-  const suffix = selectedFiles.length === 1 ? selectedFiles[0].name : `${selectedFiles.length}件`;
-  statusText.textContent = `${kindLabel}: ${suffix} を選択しました。`;
+  statusText.textContent = message || `アップロード待ち: ${selectedFiles.length}件`;
 }
 
 function removeSelectedFile(index) {
@@ -162,26 +160,25 @@ function removeSelectedFile(index) {
   }
 
   renderSelectedPreviews();
-  updateSelectionStatus("ファイル");
+  updateSelectionStatus(`アップロード待ち: ${selectedFiles.length}件`);
   uploadedLink.hidden = true;
 }
 
 function handleFileSelection(input, kindLabel) {
   const files = Array.from(input.files || []);
   uploadedLink.hidden = true;
-  clearPreviews();
-  resetOtherInputs(input);
 
   if (!files.length) {
-    selectedFiles = [];
-    sendButton.disabled = true;
-    statusText.textContent = "";
+    updateSelectionStatus();
     return;
   }
 
-  selectedFiles = files;
+  selectedFiles.push(...files);
+  input.value = "";
   renderSelectedPreviews();
-  updateSelectionStatus(kindLabel);
+
+  const added = files.length === 1 ? files[0].name : `${files.length}件`;
+  updateSelectionStatus(`${kindLabel}: ${added} を追加しました。合計 ${selectedFiles.length}件`);
 }
 
 photoInput.addEventListener("change", () => handleFileSelection(photoInput, "写真"));
@@ -225,6 +222,7 @@ form.addEventListener("submit", async (event) => {
   try {
     const response = await fetch("/upload", {
       method: "POST",
+      headers: deviceHeaders(),
       body: formData,
     });
     const result = await parseUploadResponse(response);

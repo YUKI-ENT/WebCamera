@@ -25,5 +25,6 @@
     "カメラ",
     "スマホ"
   ],
-  "provisional_id": "999999"
+  "provisional_id": "999999",
+  "device_auth_enabled": false
 }

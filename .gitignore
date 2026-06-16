@@ -6,3 +6,4 @@ uploads/
 build/
 dist/
 *.spec.bak
+devices.json
