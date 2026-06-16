@@ -167,6 +167,9 @@ class WebCameraGui(tk.Tk):
 
         self.add_row(settings, 5, 'Exam names', ttk.Entry(settings, textvariable=self.config_vars['exam_names']))
         self.add_row(settings, 6, 'Provisional ID', ttk.Entry(settings, textvariable=self.config_vars['provisional_id']))
+        ttk.Checkbutton(settings, text='Device auth enabled', variable=self.config_vars['device_auth_enabled']).grid(
+            row=7, column=1, sticky='w', pady=(8, 0)
+        )
 
         controls = ttk.Frame(self.server_tab)
         controls.grid(row=1, column=0, sticky='ew', pady=12)
@@ -198,14 +201,9 @@ class WebCameraGui(tk.Tk):
 
         auth_settings = ttk.LabelFrame(self.auth_tab, text='Device Auth', padding=12)
         auth_settings.grid(row=0, column=0, sticky='ew')
-        self.auth_enabled_check = ttk.Checkbutton(
-            auth_settings,
-            text='Device auth enabled',
-            variable=self.config_vars['device_auth_enabled'],
-            command=self.update_auth_tab_state,
-        )
-        self.auth_enabled_check.grid(row=0, column=0, sticky='w')
-        ttk.Label(auth_settings, text='Save settings and restart server after changing this option.').grid(
+        self.auth_tab_status_var = tk.StringVar(value='Device auth is disabled.')
+        ttk.Label(auth_settings, textvariable=self.auth_tab_status_var).grid(row=0, column=0, sticky='w')
+        ttk.Label(auth_settings, text='Enable Device auth in Server > Settings, save, then restart the server.').grid(
             row=1, column=0, sticky='w', pady=(6, 0)
         )
 
@@ -356,6 +354,7 @@ class WebCameraGui(tk.Tk):
             return
 
         self.status_var.set('Running')
+        self.update_auth_tab_state()
         self.update_server_address()
 
     def auto_start_server(self) -> None:
@@ -368,6 +367,7 @@ class WebCameraGui(tk.Tk):
         self.server_url_var.set('Server is stopped.')
         self.qr_photo = None
         self.qr_label.configure(image='', text='QR code will appear after startup.')
+        self.update_auth_tab_state()
 
     def update_server_address(self) -> None:
         url = self.server.public_url
@@ -376,7 +376,7 @@ class WebCameraGui(tk.Tk):
             return
 
         self.server_url_var.set(url)
-        if self.config_vars['device_auth_enabled'].get():
+        if self.is_auth_active():
             self.qr_photo = None
             self.qr_label.configure(
                 image='',
@@ -442,19 +442,27 @@ class WebCameraGui(tk.Tk):
             self.enqueue_log(f'Device deleted: {device_id}')
         self.refresh_devices()
 
+    def is_auth_active(self) -> bool:
+        return bool(self.server.config and self.server.config.get('device_auth_enabled', False))
+
     def update_auth_tab_state(self) -> None:
-        enabled = bool(self.config_vars['device_auth_enabled'].get())
+        enabled = self.is_auth_active()
         state = 'normal' if enabled else 'disabled'
         if hasattr(self, 'create_registration_button'):
             self.create_registration_button.configure(state=state)
             self.delete_device_button.configure(state=state)
             self.refresh_devices_button.configure(state=state)
+        if hasattr(self, 'auth_tab_status_var'):
+            if enabled:
+                self.auth_tab_status_var.set('Device auth is active. You can register and manage devices here.')
+            else:
+                self.auth_tab_status_var.set('Device auth is disabled or server has not been restarted with auth enabled.')
         if self.server.public_url:
             self.update_server_address()
         if hasattr(self, 'registration_qr_label') and not enabled:
-            self.registration_url_var.set('Device auth is disabled.')
+            self.registration_url_var.set('Device auth is not active.')
             self.registration_qr_photo = None
-            self.registration_qr_label.configure(image='', text='Enable device auth to create registration QR.')
+            self.registration_qr_label.configure(image='', text='Enable device auth in Settings and restart server.')
 
     def enqueue_log(self, message: str) -> None:
         timestamp = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
