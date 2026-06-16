@@ -12,8 +12,8 @@ Windows exe では GUI 管理画面を表示し、設定変更、ログ確認、
 
   アドレスは、`http://192.168.100.10:5000` 等になります。
 
-  <img width="762" height="592" alt="Screenshot 2026-06-11 153801" src="https://github.com/user-attachments/assets/24eac27d-87ce-4ddc-900e-665dcf83bd14" />
-
+  <img width="762" height="746" alt="スクリーンショット 2026-06-16 231523" src="https://github.com/user-attachments/assets/22d98c01-fddf-4ec2-b687-04433fddba68" />
+  
 - Python環境がある場合はスクリプト実行が可能です。
 
 サーバーだけを起動する場合:
@@ -76,6 +76,11 @@ WebCamera.exeと同じフォルダの設定ファイル：config.jsonを読み�
 ## 端末認証
 
 GUI の `端末認証` を有効にすると、登録済み端末だけからアップロードできるようになります。`登録用QR作成` で5分間・1回限りの登録QRを発行し、スマホで読み取って端末登録します。登録済み端末は 一覧から削除できます。端末トークンは `devices.json` にハッシュ保存されます。
+
+<img width="762" height="746" alt="スクリーンショット 2026-06-16 231624" src="https://github.com/user-attachments/assets/0057d8bc-fa3e-4b0a-85b4-776e3253df2a" />
+
+<img width="762" height="746" alt="スクリーンショット 2026-06-16 231857" src="https://github.com/user-attachments/assets/49ba6ff4-a91e-4548-ab4b-c41e1f9761c1" />
+
 
 ## Windows exe 作成
 
