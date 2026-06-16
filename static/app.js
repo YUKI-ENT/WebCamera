@@ -99,32 +99,35 @@ function resetOtherInputs(activeInput) {
   });
 }
 
-function renderSinglePreview(file) {
-  const url = URL.createObjectURL(file);
-  selectedObjectUrls.push(url);
-
-  if (file.type.startsWith("video/")) {
-    videoPreview.src = url;
-    videoPreview.hidden = false;
-  } else {
-    imagePreview.src = url;
-    imagePreview.hidden = false;
-  }
-}
-
-function renderGalleryPreview(files) {
+function renderSelectedPreviews() {
   previewGrid.hidden = false;
   previewGrid.replaceChildren(
-    ...files.slice(0, 12).map((file) => {
+    ...selectedFiles.map((file, index) => {
       const url = URL.createObjectURL(file);
       selectedObjectUrls.push(url);
       const item = document.createElement("div");
       item.className = "preview-item";
 
-      const img = document.createElement("img");
-      img.src = url;
-      img.alt = file.name;
-      item.appendChild(img);
+      const removeButton = document.createElement("button");
+      removeButton.type = "button";
+      removeButton.className = "remove-file-button";
+      removeButton.textContent = "削除";
+      removeButton.setAttribute("aria-label", `${file.name} を削除`);
+      removeButton.addEventListener("click", () => removeSelectedFile(index));
+      item.appendChild(removeButton);
+
+      if (file.type.startsWith("video/")) {
+        const video = document.createElement("video");
+        video.src = url;
+        video.controls = true;
+        video.playsInline = true;
+        item.appendChild(video);
+      } else {
+        const img = document.createElement("img");
+        img.src = url;
+        img.alt = file.name;
+        item.appendChild(img);
+      }
 
       const label = document.createElement("span");
       label.textContent = file.name;
@@ -132,6 +135,35 @@ function renderGalleryPreview(files) {
       return item;
     }),
   );
+}
+
+function updateSelectionStatus(kindLabel = "ファイル") {
+  sendButton.disabled = selectedFiles.length === 0;
+  if (!selectedFiles.length) {
+    statusText.textContent = "";
+    return;
+  }
+
+  const suffix = selectedFiles.length === 1 ? selectedFiles[0].name : `${selectedFiles.length}件`;
+  statusText.textContent = `${kindLabel}: ${suffix} を選択しました。`;
+}
+
+function removeSelectedFile(index) {
+  selectedFiles.splice(index, 1);
+  [photoInput, galleryInput, videoInput].forEach((input) => {
+    input.value = "";
+  });
+  clearPreviews();
+
+  if (!selectedFiles.length) {
+    updateSelectionStatus();
+    uploadedLink.hidden = true;
+    return;
+  }
+
+  renderSelectedPreviews();
+  updateSelectionStatus("ファイル");
+  uploadedLink.hidden = true;
 }
 
 function handleFileSelection(input, kindLabel) {
@@ -148,15 +180,8 @@ function handleFileSelection(input, kindLabel) {
   }
 
   selectedFiles = files;
-  if (input === galleryInput && files.length > 1) {
-    renderGalleryPreview(files);
-  } else {
-    renderSinglePreview(files[0]);
-  }
-
-  sendButton.disabled = false;
-  const suffix = files.length === 1 ? files[0].name : `${files.length}件`;
-  statusText.textContent = `${kindLabel}: ${suffix} を選択しました。`;
+  renderSelectedPreviews();
+  updateSelectionStatus(kindLabel);
 }
 
 photoInput.addEventListener("change", () => handleFileSelection(photoInput, "写真"));
