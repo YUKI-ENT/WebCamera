@@ -86,18 +86,27 @@ class WebCameraGui(tk.Tk):
 
         self.create_widgets()
         self.load_config_to_form()
+        self.update_auth_tab_state()
         self.refresh_devices()
         self.after(100, self.flush_logs)
         self.after(250, self.auto_start_server)
         self.protocol('WM_DELETE_WINDOW', self.on_close)
 
     def create_widgets(self) -> None:
-        root = ttk.Frame(self, padding=16)
-        root.pack(fill='both', expand=True)
-        root.columnconfigure(0, weight=1)
-        root.rowconfigure(4, weight=1)
+        self.notebook = ttk.Notebook(self)
+        self.notebook.pack(fill='both', expand=True, padx=12, pady=12)
 
-        settings = ttk.LabelFrame(root, text='Settings', padding=12)
+        self.server_tab = ttk.Frame(self.notebook, padding=12)
+        self.auth_tab = ttk.Frame(self.notebook, padding=12)
+        self.notebook.add(self.server_tab, text='Server')
+        self.notebook.add(self.auth_tab, text='Device Auth')
+
+        self.server_tab.columnconfigure(0, weight=1)
+        self.server_tab.rowconfigure(3, weight=1)
+        self.auth_tab.columnconfigure(0, weight=1)
+        self.auth_tab.rowconfigure(2, weight=1)
+
+        settings = ttk.LabelFrame(self.server_tab, text='Settings', padding=12)
         settings.grid(row=0, column=0, sticky='ew')
         settings.columnconfigure(1, weight=1)
 
@@ -129,11 +138,8 @@ class WebCameraGui(tk.Tk):
 
         self.add_row(settings, 5, 'Exam names', ttk.Entry(settings, textvariable=self.config_vars['exam_names']))
         self.add_row(settings, 6, 'Provisional ID', ttk.Entry(settings, textvariable=self.config_vars['provisional_id']))
-        ttk.Checkbutton(settings, text='Device auth enabled', variable=self.config_vars['device_auth_enabled']).grid(
-            row=7, column=1, sticky='w', pady=(8, 0)
-        )
 
-        controls = ttk.Frame(root)
+        controls = ttk.Frame(self.server_tab)
         controls.grid(row=1, column=0, sticky='ew', pady=12)
         controls.columnconfigure(3, weight=1)
         ttk.Button(controls, text='Save settings', command=self.save_settings).grid(row=0, column=0, padx=(0, 8))
@@ -142,7 +148,7 @@ class WebCameraGui(tk.Tk):
         self.status_var = tk.StringVar(value='Stopped')
         ttk.Label(controls, textvariable=self.status_var, anchor='e').grid(row=0, column=3, sticky='e')
 
-        address_frame = ttk.LabelFrame(root, text='Server Address', padding=8)
+        address_frame = ttk.LabelFrame(self.server_tab, text='Server Address', padding=8)
         address_frame.grid(row=2, column=0, sticky='ew', pady=(0, 12))
         address_frame.columnconfigure(0, weight=1)
         self.server_url_var = tk.StringVar(value='Server is stopped.')
@@ -150,34 +156,65 @@ class WebCameraGui(tk.Tk):
         self.qr_label = ttk.Label(address_frame, text='QR code will appear after startup.', anchor='center')
         self.qr_label.grid(row=1, column=0, sticky='ew', pady=(8, 0))
 
-        device_frame = ttk.LabelFrame(root, text='Device Tokens', padding=8)
-        device_frame.grid(row=3, column=0, sticky='ew', pady=(0, 12))
-        device_frame.columnconfigure(0, weight=1)
-        device_controls = ttk.Frame(device_frame)
-        device_controls.grid(row=0, column=0, sticky='ew')
-        ttk.Button(device_controls, text='Create registration QR', command=self.create_registration_qr).grid(row=0, column=0, padx=(0, 8))
-        ttk.Button(device_controls, text='Delete selected', command=self.delete_selected_device).grid(row=0, column=1, padx=(0, 8))
-        ttk.Button(device_controls, text='Refresh', command=self.refresh_devices).grid(row=0, column=2)
-        self.registration_url_var = tk.StringVar(value='')
-        ttk.Label(device_frame, textvariable=self.registration_url_var).grid(row=1, column=0, sticky='ew', pady=(8, 0))
-        self.registration_qr_label = ttk.Label(device_frame, text='Registration QR will appear here.', anchor='center')
-        self.registration_qr_label.grid(row=2, column=0, sticky='ew', pady=(8, 0))
-        self.device_tree = ttk.Treeview(device_frame, columns=('name', 'created_at', 'last_seen_at'), show='headings', height=4)
-        self.device_tree.heading('name', text='Name')
-        self.device_tree.heading('created_at', text='Created')
-        self.device_tree.heading('last_seen_at', text='Last seen')
-        self.device_tree.grid(row=3, column=0, sticky='ew', pady=(8, 0))
-
-        log_frame = ttk.LabelFrame(root, text='Log', padding=8)
-        log_frame.grid(row=4, column=0, sticky='nsew')
+        log_frame = ttk.LabelFrame(self.server_tab, text='Log', padding=8)
+        log_frame.grid(row=3, column=0, sticky='nsew')
         log_frame.columnconfigure(0, weight=1)
         log_frame.rowconfigure(0, weight=1)
 
-        self.log_text = tk.Text(log_frame, height=14, wrap='word', state='disabled')
+        self.log_text = tk.Text(log_frame, height=12, wrap='word', state='disabled')
         self.log_text.grid(row=0, column=0, sticky='nsew')
         scrollbar = ttk.Scrollbar(log_frame, orient='vertical', command=self.log_text.yview)
         scrollbar.grid(row=0, column=1, sticky='ns')
         self.log_text.configure(yscrollcommand=scrollbar.set)
+
+        auth_settings = ttk.LabelFrame(self.auth_tab, text='Device Auth', padding=12)
+        auth_settings.grid(row=0, column=0, sticky='ew')
+        self.auth_enabled_check = ttk.Checkbutton(
+            auth_settings,
+            text='Device auth enabled',
+            variable=self.config_vars['device_auth_enabled'],
+            command=self.update_auth_tab_state,
+        )
+        self.auth_enabled_check.grid(row=0, column=0, sticky='w')
+        ttk.Label(auth_settings, text='Save settings and restart server after changing this option.').grid(
+            row=1, column=0, sticky='w', pady=(6, 0)
+        )
+
+        device_frame = ttk.LabelFrame(self.auth_tab, text='Device Tokens', padding=8)
+        device_frame.grid(row=1, column=0, sticky='ew', pady=12)
+        device_frame.columnconfigure(0, weight=1)
+        device_controls = ttk.Frame(device_frame)
+        device_controls.grid(row=0, column=0, sticky='ew')
+        self.create_registration_button = ttk.Button(
+            device_controls,
+            text='Create registration QR',
+            command=self.create_registration_qr,
+        )
+        self.create_registration_button.grid(row=0, column=0, padx=(0, 8))
+        self.delete_device_button = ttk.Button(device_controls, text='Delete selected', command=self.delete_selected_device)
+        self.delete_device_button.grid(row=0, column=1, padx=(0, 8))
+        self.refresh_devices_button = ttk.Button(device_controls, text='Refresh', command=self.refresh_devices)
+        self.refresh_devices_button.grid(row=0, column=2)
+        self.registration_url_var = tk.StringVar(value='')
+        ttk.Label(device_frame, textvariable=self.registration_url_var).grid(row=1, column=0, sticky='ew', pady=(8, 0))
+        self.registration_qr_label = ttk.Label(device_frame, text='Registration QR will appear here.', anchor='center')
+        self.registration_qr_label.grid(row=2, column=0, sticky='ew', pady=(8, 0))
+
+        list_frame = ttk.LabelFrame(self.auth_tab, text='Registered Devices', padding=8)
+        list_frame.grid(row=2, column=0, sticky='nsew')
+        list_frame.columnconfigure(0, weight=1)
+        list_frame.rowconfigure(0, weight=1)
+        self.device_tree = ttk.Treeview(list_frame, columns=('name', 'created_at', 'last_seen_at'), show='headings', height=8)
+        self.device_tree.heading('name', text='Name')
+        self.device_tree.heading('created_at', text='Created')
+        self.device_tree.heading('last_seen_at', text='Last seen')
+        self.device_tree.column('name', width=180)
+        self.device_tree.column('created_at', width=190)
+        self.device_tree.column('last_seen_at', width=190)
+        self.device_tree.grid(row=0, column=0, sticky='nsew')
+        device_scrollbar = ttk.Scrollbar(list_frame, orient='vertical', command=self.device_tree.yview)
+        device_scrollbar.grid(row=0, column=1, sticky='ns')
+        self.device_tree.configure(yscrollcommand=device_scrollbar.set)
 
     def add_row(self, parent, row: int, label: str, widget) -> None:
         ttk.Label(parent, text=label).grid(row=row, column=0, sticky='w', padx=(0, 12), pady=4)
@@ -273,6 +310,7 @@ class WebCameraGui(tk.Tk):
             return None
 
         self.enqueue_log(f'Settings saved: {CONFIG_PATH}')
+        self.update_auth_tab_state()
         return config
 
     def start_server_from_form(self) -> None:
@@ -366,6 +404,18 @@ class WebCameraGui(tk.Tk):
         if self.auth_manager.delete_device(device_id):
             self.enqueue_log(f'Device deleted: {device_id}')
         self.refresh_devices()
+
+    def update_auth_tab_state(self) -> None:
+        enabled = bool(self.config_vars['device_auth_enabled'].get())
+        state = 'normal' if enabled else 'disabled'
+        if hasattr(self, 'create_registration_button'):
+            self.create_registration_button.configure(state=state)
+            self.delete_device_button.configure(state=state)
+            self.refresh_devices_button.configure(state=state)
+        if hasattr(self, 'registration_qr_label') and not enabled:
+            self.registration_url_var.set('Device auth is disabled.')
+            self.registration_qr_photo = None
+            self.registration_qr_label.configure(image='', text='Enable device auth to create registration QR.')
 
     def enqueue_log(self, message: str) -> None:
         timestamp = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
