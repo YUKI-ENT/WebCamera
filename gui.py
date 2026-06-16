@@ -28,6 +28,33 @@ def display_host(host: str) -> str:
     return get_lan_ip() if host in {'0.0.0.0', '::', ''} else host
 
 
+class ScrollableTab(ttk.Frame):
+    def __init__(self, parent):
+        super().__init__(parent)
+        self.columnconfigure(0, weight=1)
+        self.rowconfigure(0, weight=1)
+        self.canvas = tk.Canvas(self, highlightthickness=0)
+        self.scrollbar = ttk.Scrollbar(self, orient='vertical', command=self.canvas.yview)
+        self.content = ttk.Frame(self.canvas, padding=12)
+        self.window_id = self.canvas.create_window((0, 0), window=self.content, anchor='nw')
+        self.canvas.configure(yscrollcommand=self.scrollbar.set)
+        self.canvas.grid(row=0, column=0, sticky='nsew')
+        self.scrollbar.grid(row=0, column=1, sticky='ns')
+        self.content.bind('<Configure>', self._on_content_configure)
+        self.canvas.bind('<Configure>', self._on_canvas_configure)
+        self.canvas.bind_all('<MouseWheel>', self._on_mousewheel)
+
+    def _on_content_configure(self, _event):
+        self.canvas.configure(scrollregion=self.canvas.bbox('all'))
+
+    def _on_canvas_configure(self, event):
+        self.canvas.itemconfigure(self.window_id, width=event.width)
+
+    def _on_mousewheel(self, event):
+        if self.winfo_viewable():
+            self.canvas.yview_scroll(int(-1 * (event.delta / 120)), 'units')
+
+
 class ServerController:
     def __init__(self, log_callback):
         self.log_callback = log_callback
@@ -96,15 +123,17 @@ class WebCameraGui(tk.Tk):
         self.notebook = ttk.Notebook(self)
         self.notebook.pack(fill='both', expand=True, padx=12, pady=12)
 
-        self.server_tab = ttk.Frame(self.notebook, padding=12)
-        self.auth_tab = ttk.Frame(self.notebook, padding=12)
-        self.notebook.add(self.server_tab, text='Server')
-        self.notebook.add(self.auth_tab, text='Device Auth')
+        self.server_scroll = ScrollableTab(self.notebook)
+        self.auth_scroll = ScrollableTab(self.notebook)
+        self.server_tab = self.server_scroll.content
+        self.auth_tab = self.auth_scroll.content
+        self.notebook.add(self.server_scroll, text='Server')
+        self.notebook.add(self.auth_scroll, text='Device Auth')
 
         self.server_tab.columnconfigure(0, weight=1)
-        self.server_tab.rowconfigure(3, weight=1)
+        self.server_tab.rowconfigure(3, weight=0)
         self.auth_tab.columnconfigure(0, weight=1)
-        self.auth_tab.rowconfigure(2, weight=1)
+        self.auth_tab.rowconfigure(2, weight=0)
 
         settings = ttk.LabelFrame(self.server_tab, text='Settings', padding=12)
         settings.grid(row=0, column=0, sticky='ew')
@@ -161,7 +190,7 @@ class WebCameraGui(tk.Tk):
         log_frame.columnconfigure(0, weight=1)
         log_frame.rowconfigure(0, weight=1)
 
-        self.log_text = tk.Text(log_frame, height=12, wrap='word', state='disabled')
+        self.log_text = tk.Text(log_frame, height=10, wrap='word', state='disabled')
         self.log_text.grid(row=0, column=0, sticky='nsew')
         scrollbar = ttk.Scrollbar(log_frame, orient='vertical', command=self.log_text.yview)
         scrollbar.grid(row=0, column=1, sticky='ns')
@@ -347,6 +376,14 @@ class WebCameraGui(tk.Tk):
             return
 
         self.server_url_var.set(url)
+        if self.config_vars['device_auth_enabled'].get():
+            self.qr_photo = None
+            self.qr_label.configure(
+                image='',
+                text='Device auth is enabled. Use the registration QR on the Device Auth tab.',
+            )
+            return
+
         try:
             import qrcode
             from PIL import ImageTk
@@ -412,6 +449,8 @@ class WebCameraGui(tk.Tk):
             self.create_registration_button.configure(state=state)
             self.delete_device_button.configure(state=state)
             self.refresh_devices_button.configure(state=state)
+        if self.server.public_url:
+            self.update_server_address()
         if hasattr(self, 'registration_qr_label') and not enabled:
             self.registration_url_var.set('Device auth is disabled.')
             self.registration_qr_photo = None
