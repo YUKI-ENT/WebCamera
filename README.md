@@ -1,5 +1,5 @@
 # WebCamera
-<img width="320" height="540" alt="Screenshot_20260611-152627~2" src="https://github.com/user-attachments/assets/dcadec46-50f4-4f9b-9ed3-62fd4108eff6" />
+<img width="319" height="535" alt="39611~0004~2026_06_17~デジカメ~RSB" src="https://github.com/user-attachments/assets/9f479f02-e57f-4776-85b8-146439126c3d" />
 
 スマホなどのブラウザからカメラで撮影し、Python サーバーへ画像や動画をアップロードする Flask アプリです。
 
@@ -77,10 +77,18 @@ WebCamera.exeと同じフォルダの設定ファイル：config.jsonを読み�
 
 GUI の `端末認証` を有効にすると、登録済み端末だけからアップロードできるようになります。`登録用QR作成` で5分間・1回限りの登録QRを発行し、スマホで読み取って端末登録します。登録済み端末は 一覧から削除できます。端末トークンは `devices.json` にハッシュ保存されます。
 
-<img width="762" height="746" alt="スクリーンショット 2026-06-16 231624" src="https://github.com/user-attachments/assets/0057d8bc-fa3e-4b0a-85b4-776e3253df2a" />
+1. `サーバー`ページで、`端末認証を有効にする` にチェックを入れ、設定を保存後、サーバーを再起動します。
+  <img width="738" height="572" alt="Screenshot 2026-06-17 112457" src="https://github.com/user-attachments/assets/3fb6d14d-84e0-47ca-850e-ccc390edddf0" />
 
-<img width="762" height="746" alt="スクリーンショット 2026-06-16 231857" src="https://github.com/user-attachments/assets/49ba6ff4-a91e-4548-ab4b-c41e1f9761c1" />
+2. `端末認証` ページで、`登録用QRを作成` を押すと、QRコードが表示されます。5分以内にスマートフォンで読みとり、端末名を入力します。
+  <img width="762" height="746" alt="スクリーンショット 2026-06-16 231624" src="https://github.com/user-attachments/assets/4c591d79-cc97-4f0a-ba7b-a8f1cea740c5" />
 
+  <img width="320" height="599" alt="39611~0002~2026_06_17~デジカメ~RSB" src="https://github.com/user-attachments/assets/5b6544e4-d801-4d35-bdbd-9e946394bc51" />
+
+3. 登録が完了すると、`登録済み端末`一覧に表示されます。端末を削除したいときは、選択後削除ボタンを押してください。
+   <img width="693" height="123" alt="Screenshot 2026-06-17 114409" src="https://github.com/user-attachments/assets/72e349d8-ea52-43a0-b54d-91539c3ac3b5" />
+
+4. 登録済み端末からは、`サーバー`ページのQRコードのアドレスからアップロード可能になります。
 
 ## Windows exe 作成
 
