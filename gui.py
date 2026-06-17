@@ -206,11 +206,12 @@ class WebCameraGui(tk.Tk):
         auth_settings.grid(row=0, column=0, sticky='ew')
         self.auth_tab_status_var = tk.StringVar(value='端末認証は無効です。')
         ttk.Label(auth_settings, textvariable=self.auth_tab_status_var).grid(row=0, column=0, sticky='w')
-        ttk.Label(
+        self.auth_instruction_label = ttk.Label(
             auth_settings,
             text='サーバー > 設定で端末認証を有効にして保存し、サーバーを再起動してください。',
             wraplength=620,
-        ).grid(row=1, column=0, sticky='w', pady=(6, 0))
+        )
+        self.auth_instruction_label.grid(row=1, column=0, sticky='w', pady=(6, 0))
 
         device_frame = ttk.LabelFrame(self.auth_tab, text='端末登録用QR', padding=8)
         device_frame.grid(row=1, column=0, sticky='ew', pady=12)
@@ -500,13 +501,24 @@ class WebCameraGui(tk.Tk):
                 self.auth_tab_status_var.set('端末認証は有効です。この画面で端末の登録と削除ができます。')
             else:
                 self.auth_tab_status_var.set('端末認証は無効、または有効化後にサーバーが再起動されていません。')
+        if hasattr(self, 'auth_instruction_label'):
+            if enabled:
+                self.auth_instruction_label.grid_remove()
+            else:
+                self.auth_instruction_label.grid()
         if self.server.public_url:
             self.update_server_address()
-        if hasattr(self, 'registration_qr_label') and not enabled:
-            self.stop_device_refresh()
-            self.registration_url_var.set('端末認証は有効ではありません。')
-            self.registration_qr_photo = None
-            self.registration_qr_label.configure(image='', text='設定で端末認証を有効にし、サーバーを再起動してください。')
+        if hasattr(self, 'registration_qr_label'):
+            if enabled:
+                if self.registration_url_var.get() == '端末認証は有効ではありません。':
+                    self.registration_url_var.set('')
+                if self.registration_qr_photo is None:
+                    self.registration_qr_label.configure(image='', text='ここに登録用QRコードを表示します。')
+            else:
+                self.stop_device_refresh()
+                self.registration_url_var.set('端末認証は有効ではありません。')
+                self.registration_qr_photo = None
+                self.registration_qr_label.configure(image='', text='設定で端末認証を有効にし、サーバーを再起動してください。')
 
     def enqueue_log(self, message: str) -> None:
         timestamp = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
